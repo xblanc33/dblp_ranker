@@ -38,13 +38,17 @@ async function extractEntryList(url) {
                 default: extractedEntry.kind = 'unknown';
             } 
 
-            extractedEntry.number = entry.querySelector(NUMBER_SELECTOR).id;
+            if (entry.querySelector(NUMBER_SELECTOR) && entry.querySelector(ENTRY_LINK_SELECTOR) && entry.querySelector(ENTRY_NAME_SELECTOR)) {
+                extractedEntry.number = entry.querySelector(NUMBER_SELECTOR).id;
 
-            extractedEntry.link = entry.querySelector(ENTRY_LINK_SELECTOR).href;
+                extractedEntry.link = entry.querySelector(ENTRY_LINK_SELECTOR).href;
 
-            extractedEntry.title = entry.querySelector(ENTRY_NAME_SELECTOR).innerText.split('(')[0];
+                extractedEntry.title = entry.querySelector(ENTRY_NAME_SELECTOR).innerText.split('(')[0];
 
-            extractedEntryList.push(extractedEntry);
+                extractedEntryList.push(extractedEntry);
+
+            }
+            
         });
         return extractedEntryList;
     });
