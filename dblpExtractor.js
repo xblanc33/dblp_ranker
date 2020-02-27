@@ -85,31 +85,41 @@ async function setCoreRank(entryList) {
         const entry = entryList[index];
         
         await page.goto(CORE_URL, {waitUntil:"domcontentloaded"});
+        await page.waitForSelector('#searchform > input');
 
-        console.log('Try to rank: ',entry.title);
+        let query = cleanTitle(entry.title);
+        console.log('Try to rank: ',query);
         const input = await page.$('#searchform > input');
-        await input.type(entry.title);
-        await input.press('Enter');
-        try {
-            await page.waitFor('table',{timeout:2000});
+        await input.type(query);
 
-            let rank = await page.evaluate( title => {
+        const [res] = await Promise.all([
+            page.waitForNavigation({waitUntil:"domcontentloaded"}),
+            page.click('#searchform > input[type=submit]:nth-child(7)'),
+        ]);
+        
+        try {
+            await page.waitFor('table',{timeout:3000});
+
+            let rank = await page.evaluate( query => {
                 let trList = document.querySelectorAll('tbody tr');
                 if (trList.length > 0) {
+                    let unmatch = query +" with ";
                     for (let trIndex = 1; trIndex < trList.length; trIndex++) {
                         let acronym = trList[trIndex].querySelectorAll('td')[1].innerText;
                         let name = trList[trIndex].querySelectorAll('td')[0].innerText;
                         let rank = trList[trIndex].querySelectorAll('td')[3].innerText;
                         
-                        let lowerTitle = title.toLowerCase();
-                        if ( lowerTitle === acronym.toLowerCase() || lowerTitle === name.toLowerCase()) {
+                        if ( query == acronym.trim().toLowerCase() || query == name.trim().toLowerCase()) {
                             return rank;
+                        } else {
+                            unmatch += acronym.trim().toLowerCase()+";";
                         }
                     }
+                    return 'no matching result:'+unmatch;
                 } else {
                     return 'unknown';
                 }
-            }, entry.title);
+            }, query);
             entry.rank = rank;
 
             console.log('found rank:',rank);
@@ -138,19 +148,17 @@ async function setScimagoRank(entryList) {
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
         
-        await page.goto(SCIMAGO_URL, {waitUntil:"domcontentloaded"});
-
-        const input = await page.$('#searchbox > input');
-        let query = cleanJournalFullTitle(entry.fullTitle);
-        console.log('Try to rank: ',query);
-        await input.type(query);
-
-        const [res] = await Promise.all([
-            page.waitForNavigation({waitUntil:"domcontentloaded"}),
-            page.click('#searchbutton'),
-        ]);
-
         try {
+            await page.goto(SCIMAGO_URL, {waitUntil:"domcontentloaded"});
+            const input = await page.$('#searchbox > input');
+            let query = cleanTitle(entry.fullTitle);
+            console.log('Try to rank: ',query);
+            await input.type(query);
+
+            const [res] = await Promise.all([
+                page.waitForNavigation({waitUntil:"domcontentloaded"}),
+                page.click('#searchbutton'),
+            ]);
             await page.waitFor('div.search_results > a',{timeout:1000});
 
             const [response] = await Promise.all([
@@ -203,21 +211,19 @@ function exportCSV(entryList,filename) {
     }
 }
 
-function cleanJournalFullTitle(fullTitle) {
-    let res;
-    res = fullTitle.toLowerCase();
-    res = res.split('\n')[0];
+
+function cleanTitle(title) {
+    let res = title;
+    res.trim();
+    res = res.toLowerCase();
+    res = res.replace(/\(\d*\)/g, '');
     res = res.split(',')[0];
-    res = res.split('(')[0];
     res = res.replace(':','');
-    res = res.replace(/&amp;/g, ' ');
+    res = res.replace(/&amp;/g, '');
+    res = res.trim();
     return res;
 }
 
-
-//https://dblp.uni-trier.de/pers/z/Zeitoun:Marc.html
-//'https://dblp.org/pers/d/Domenger:Jean=Philippe.html'
-//'https://dblp.uni-trier.de/pers/b/Blanc_0001:Xavier.html'
 (async function run() {
 
     var myArgs = process.argv.slice(2);
