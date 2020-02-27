@@ -1,0 +1,15 @@
+{
+  "name": "ranking",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "xavier blanc",
+  "license": "ISC",
+  "dependencies": {
+    "json2csv": "^4.5.4",
+    "puppeteer": "^2.1.1"
+  }
+}
