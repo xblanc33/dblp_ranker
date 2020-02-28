@@ -21,6 +21,15 @@ if (process.env.NODE_ENV !== 'production') {
     }));
 }
 
+const dblp2QueryPatch = new Map();
+
+function loadPatch() {
+    let rawdata = fs.readFileSync('./patch.json');
+    let patchList = JSON.parse(rawdata);
+    patchList.forEach(patch => {
+        dblp2QueryPatch.set(cleanTitle(patch.dblp), cleanTitle(patch.query));
+    })
+}
 
 async function extractEntryList(url) {
     let browser = await puppeteer.launch({headless:HEADLESS});
@@ -101,7 +110,14 @@ async function setCoreRank(entryList) {
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
         
-        let query = cleanTitle(entry.title);
+        let cleanedTitle = cleanTitle(entry.title);
+        let query;
+        if (dblp2QueryPatch.has(cleanedTitle)) {
+            query = dblp2QueryPatch.get(cleanedTitle);
+        } else {
+            query = cleanedTitle;
+        }
+
         logger.info(`Try to rank: ${query}`);
 
         if (foundRank.has(query)) {
@@ -284,6 +300,8 @@ function cleanTitle(title) {
     } else {
         let url = myArgs[0];
         let out = myArgs[1];
+
+        loadPatch();
 
         let entryList = await extractEntryList(url);
 
