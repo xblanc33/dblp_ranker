@@ -187,7 +187,7 @@ async function setScimagoRank(entryList) {
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
 
-        let cleanedTitle = cleanTitle(entry.title);
+        let cleanedTitle = cleanTitle(entry.fullTitle);
         let query;
         if (dblp2QueryPatch.has(cleanedTitle)) {
             query = dblp2QueryPatch.get(cleanedTitle);
