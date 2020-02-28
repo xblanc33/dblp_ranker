@@ -161,74 +161,82 @@ async function setCoreRank(entryList) {
 
 async function setScimagoRank(entryList) {
     const SCIMAGO_URL = 'https://www.scimagojr.com/';
-
-    logger.info('OPEN SCIMAGO');
+    let foundRank = new Map();
 
     let browser = await puppeteer.launch({headless:HEADLESS});
     let page = await browser.newPage();
 
+    logger.info('OPEN SCIMAGO');
+
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
-        
-        try {
-            await page.goto(SCIMAGO_URL, {waitUntil:"domcontentloaded"});
-            const input = await page.$('#searchbox > input');
-            let query = cleanTitle(entry.fullTitle);
-            logger.info(`Try to rank: ${query}`);
-            await input.type(query);
 
-            const [res] = await Promise.all([
-                page.waitForNavigation({waitUntil:"domcontentloaded"}),
-                page.click('#searchbutton'),
-            ]);
-            await page.waitFor('div.search_results > a',{timeout:1000});
+        let query = cleanTitle(entry.fullTitle);
+        logger.info(`Try to rank: ${query}`);
+            
 
-            let journalList = await page.$$('div.search_results > a');
-            let foundJournal;
-            for (let journalIndex = 0; journalIndex < journalList.length; journalIndex++) {
-                let journalName = await journalList[journalIndex].$eval('span.jrnlname', el => el.innerText);
-                journalName = cleanTitle(journalName);
-                if (journalName == query || levenshtein(query, journalName) <= 4) {
-                    foundJournal = journalList[journalIndex];
-                    break;
-                }
-            }
-
-            if (foundJournal) {
-                const [response] = await Promise.all([
-                    page.waitForNavigation({waitUntil:"domcontentloaded"}),
-                    foundJournal.click(),
-                ]);
+        if (foundRank.has(query)) {
+            entry.rank = foundRank.get(query);
+            logger.info(`Found rank (in cache): ${entry.rank}`);
+        } else {
+            try {
+                await page.goto(SCIMAGO_URL, {waitUntil:"domcontentloaded"});
+                const input = await page.$('#searchbox > input');
+                await input.type(query);
     
-                let rank = await page.evaluate(() => {
-                    let cellslideList = document.querySelectorAll('div.cellslide');
-                    if (cellslideList && cellslideList.length && cellslideList.length > 0) {
-                        let cellslide = cellslideList[1];
-                        let tdList = cellslide.querySelectorAll('td');
-                        if (tdList && tdList.length && tdList.length > 0) {
-                            return tdList[tdList.length - 1].innerText;
-                        }
-                        else {
+                const [res] = await Promise.all([
+                    page.waitForNavigation({waitUntil:"domcontentloaded"}),
+                    page.click('#searchbutton'),
+                ]);
+                await page.waitFor('div.search_results > a',{timeout:1000});
+    
+                let journalList = await page.$$('div.search_results > a');
+                let foundJournal;
+                for (let journalIndex = 0; journalIndex < journalList.length; journalIndex++) {
+                    let journalName = await journalList[journalIndex].$eval('span.jrnlname', el => el.innerText);
+                    journalName = cleanTitle(journalName);
+                    if (journalName == query || levenshtein(query, journalName) <= 4) {
+                        foundJournal = journalList[journalIndex];
+                        break;
+                    }
+                }
+    
+                if (foundJournal) {
+                    const [response] = await Promise.all([
+                        page.waitForNavigation({waitUntil:"domcontentloaded"}),
+                        foundJournal.click(),
+                    ]);
+        
+                    let rank = await page.evaluate(() => {
+                        let cellslideList = document.querySelectorAll('div.cellslide');
+                        if (cellslideList && cellslideList.length && cellslideList.length > 0) {
+                            let cellslide = cellslideList[1];
+                            let tdList = cellslide.querySelectorAll('td');
+                            if (tdList && tdList.length && tdList.length > 0) {
+                                return tdList[tdList.length - 1].innerText;
+                            }
+                            else {
+                                return 'unknown';
+                            }
+                        } else {
                             return 'unknown';
                         }
-                    } else {
-                        return 'unknown';
-                    }
-                });
-                entry.rank = rank;
-                logger.info(`Found rank: ${rank}`);
-    
-
-            } else {
+                    });
+                    entry.rank = rank;
+                    foundRank.set(query, entry.rank);
+                    logger.info(`Found rank: ${rank}`);
+                } else {
+                    entry.rank = 'unknown';
+                    foundRank.set(query, entry.rank);
+                    logger.warn(`No rank found`);
+                }
+                
+            } catch(e) {
                 entry.rank = 'unknown';
-                logger.warn(`No rank found`);
-
+                foundRank.set(query, entry.rank);
+                logger.warn('No rank found');
+                //logger.error(e);
             }
-            
-        } catch(e) {
-            entry.rank = 'unknown';
-            logger.warn('No rank found');
-            //logger.error(e);
         }
     }
     await page.close();
