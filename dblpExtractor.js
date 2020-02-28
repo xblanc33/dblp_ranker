@@ -269,7 +269,7 @@ function exportCSV(entryList,filename) {
 
         logger.info(csv);
 
-        fs.writeFile(filename, csv);
+        fs.writeFileSync(filename, csv);
     } catch (err) {
         logger.error(err);
     }
