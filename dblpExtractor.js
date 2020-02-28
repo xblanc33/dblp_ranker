@@ -1,8 +1,24 @@
+const winston = require('winston');
+
 const puppeteer = require('puppeteer');
 const { Parser } = require('json2csv');
 const fs = require('fs');
 
 const HEADLESS = true;
+
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.json(),
+    transports: [
+      new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    ]
+});
+  
+if (process.env.NODE_ENV !== 'production') {
+    logger.add(new winston.transports.Console({
+        format: winston.format.simple()
+    }));
+}
 
 
 async function extractEntryList(url) {
@@ -10,7 +26,7 @@ async function extractEntryList(url) {
     let page = await browser.newPage();
     await page.goto(url, {waitUntil:"domcontentloaded"});
 
-    console.log('OPEN DBLP');
+    logger.info('OPEN DBLP');
 
     
     let entryList =  await page.evaluate(() => {
@@ -53,7 +69,7 @@ async function extractEntryList(url) {
         return extractedEntryList;
     });
 
-    console.log('GET DBLP ENTRIES');
+    logger.info('GET DBLP ENTRIES');
 
     for (let index = 0; index < entryList.length; index++) {
         if (entryList[index].kind === 'journal') {
@@ -62,7 +78,7 @@ async function extractEntryList(url) {
                 return document.querySelector('h1').innerHTML;
             });
             entryList[index].fullTitle = fullTitle;
-            console.log('GET FULL TITLE (For Journal):', fullTitle);
+            logger.info(`GET FULL TITLE (For Journal): ${fullTitle}`);
         }
     }
 
@@ -79,7 +95,7 @@ async function setCoreRank(entryList) {
     let browser = await puppeteer.launch({headless:HEADLESS});
     let page = await browser.newPage();
 
-    console.log('OPEN CORE RANK');
+    logger.info('OPEN CORE RANK');
 
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
@@ -88,7 +104,7 @@ async function setCoreRank(entryList) {
         await page.waitForSelector('#searchform > input');
 
         let query = cleanTitle(entry.title);
-        console.log('Try to rank: ',query);
+        logger.info(`Try to rank: ${query}`);
         const input = await page.$('#searchform > input');
         await input.type(query);
 
@@ -122,12 +138,12 @@ async function setCoreRank(entryList) {
             }, query);
             entry.rank = rank;
 
-            console.log('found rank:',rank);
+            logger.info(`Found rank: ${rank}`);
 
         } catch(e) {
             entry.rank = 'unknown';
-            console.log('error no rank found');
-            //console.log(e);
+            logger.warn(`No rank found`);
+            //logger.error(e);
         }
         
         
@@ -140,7 +156,7 @@ async function setCoreRank(entryList) {
 async function setScimagoRank(entryList) {
     const SCIMAGO_URL = 'https://www.scimagojr.com/';
 
-    console.log('OPEN SCIMAGO');
+    logger.info('OPEN SCIMAGO');
 
     let browser = await puppeteer.launch({headless:HEADLESS});
     let page = await browser.newPage();
@@ -152,7 +168,7 @@ async function setScimagoRank(entryList) {
             await page.goto(SCIMAGO_URL, {waitUntil:"domcontentloaded"});
             const input = await page.$('#searchbox > input');
             let query = cleanTitle(entry.fullTitle);
-            console.log('Try to rank: ',query);
+            logger.info(`Try to rank: ${query}`);
             await input.type(query);
 
             const [res] = await Promise.all([
@@ -183,12 +199,12 @@ async function setScimagoRank(entryList) {
             });
             entry.rank = rank;
 
-            console.log('rank:',rank);
+            logger.info(`Found rank: ${rank}`);
 
         } catch(e) {
-            console.log('error no rank found');
             entry.rank = 'unknown';
-            //console.log(e);
+            logger.warn('No rank found');
+            //logger.error(e);
         }
     }
     await page.close();
@@ -203,11 +219,11 @@ function exportCSV(entryList,filename) {
         const parser = new Parser(opts);
         const csv = parser.parse(entryList);
 
-        console.log(csv);
+        logger.info(csv);
 
         fs.writeFile(filename, csv);
     } catch (err) {
-        console.error(err);
+        logger.error(err);
     }
 }
 
@@ -229,9 +245,9 @@ function cleanTitle(title) {
     var myArgs = process.argv.slice(2);
 
     if (myArgs.length !== 2) {
-        console.log('two arguments are needed');
-        console.log('first argument must be the target DBPL url');
-        console.log('second argument must be the output file');
+        logger.warn('two arguments are needed');
+        logger.warn('first argument must be the target DBPL url');
+        logger.warn('second argument must be the output file');
     } else {
         let url = myArgs[0];
         let out = myArgs[1];
