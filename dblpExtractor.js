@@ -3,6 +3,7 @@ const winston = require('winston');
 const puppeteer = require('puppeteer');
 const { Parser } = require('json2csv');
 const fs = require('fs');
+const levenshtein = require('js-levenshtein');
 
 const HEADLESS = true;
 
@@ -28,7 +29,6 @@ async function extractEntryList(url) {
 
     logger.info('OPEN DBLP');
 
-    
     let entryList =  await page.evaluate(() => {
 
         const ENTRY_SELECTOR = '#publ-section li.entry';
@@ -91,6 +91,7 @@ async function extractEntryList(url) {
 
 async function setCoreRank(entryList) {
     const CORE_URL = 'http://portal.core.edu.au/conf-ranks/';
+    let foundRank = new Map();
 
     let browser = await puppeteer.launch({headless:HEADLESS});
     let page = await browser.newPage();
@@ -100,53 +101,58 @@ async function setCoreRank(entryList) {
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
         
-        await page.goto(CORE_URL, {waitUntil:"domcontentloaded"});
-        await page.waitForSelector('#searchform > input');
-
         let query = cleanTitle(entry.title);
         logger.info(`Try to rank: ${query}`);
-        const input = await page.$('#searchform > input');
-        await input.type(query);
 
-        const [res] = await Promise.all([
-            page.waitForNavigation({waitUntil:"domcontentloaded"}),
-            page.click('#searchform > input[type=submit]:nth-child(7)'),
-        ]);
-        
-        try {
-            await page.waitFor('table',{timeout:3000});
+        if (foundRank.has(query)) {
+            entry.rank = foundRank.get(query);
+            logger.info(`Found rank (in cache): ${entry.rank}`);
+        } else {
+            await page.goto(CORE_URL, {waitUntil:"domcontentloaded"});
+            await page.waitForSelector('#searchform > input');
+            const input = await page.$('#searchform > input');
+            await input.type(query);
 
-            let rank = await page.evaluate( query => {
-                let trList = document.querySelectorAll('tbody tr');
-                if (trList.length > 0) {
-                    let unmatch = query +" with ";
-                    for (let trIndex = 1; trIndex < trList.length; trIndex++) {
-                        let acronym = trList[trIndex].querySelectorAll('td')[1].innerText;
-                        let name = trList[trIndex].querySelectorAll('td')[0].innerText;
-                        let rank = trList[trIndex].querySelectorAll('td')[3].innerText;
-                        
-                        if ( query == acronym.trim().toLowerCase() || query == name.trim().toLowerCase()) {
-                            return rank;
-                        } else {
-                            unmatch += acronym.trim().toLowerCase()+";";
+            const [res] = await Promise.all([
+                page.waitForNavigation({waitUntil:"domcontentloaded"}),
+                page.click('#searchform > input[type=submit]:nth-child(7)'),
+            ]);
+            
+            try {
+                await page.waitFor('table',{timeout:3000});
+
+                let rank = await page.evaluate( query => {
+                    let trList = document.querySelectorAll('tbody tr');
+                    if (trList.length > 0) {
+                        let unmatch = query +" with ";
+                        for (let trIndex = 1; trIndex < trList.length; trIndex++) {
+                            let acronym = trList[trIndex].querySelectorAll('td')[1].innerText;
+                            let name = trList[trIndex].querySelectorAll('td')[0].innerText;
+                            let rank = trList[trIndex].querySelectorAll('td')[3].innerText;
+                            
+                            if ( query == acronym.trim().toLowerCase() || query == name.trim().toLowerCase()) {
+                                return rank;
+                            } else {
+                                unmatch += acronym.trim().toLowerCase()+";";
+                            }
                         }
+                        return 'no matching result:'+unmatch;
+                    } else {
+                        return 'unknown';
                     }
-                    return 'no matching result:'+unmatch;
-                } else {
-                    return 'unknown';
-                }
-            }, query);
-            entry.rank = rank;
+                }, query);
+                entry.rank = rank;
+                foundRank.set(query, entry.rank);
 
-            logger.info(`Found rank: ${rank}`);
+                logger.info(`Found rank: ${rank}`);
 
-        } catch(e) {
-            entry.rank = 'unknown';
-            logger.warn(`No rank found`);
-            //logger.error(e);
+            } catch(e) {
+                entry.rank = 'unknown';
+                foundRank.set(query, entry.rank);
+                logger.warn(`No rank found`);
+                //logger.error(e);
+            }
         }
-        
-        
     }
     await page.close();
     await browser.close();
@@ -177,30 +183,48 @@ async function setScimagoRank(entryList) {
             ]);
             await page.waitFor('div.search_results > a',{timeout:1000});
 
-            const [response] = await Promise.all([
-                page.waitForNavigation({waitUntil:"domcontentloaded"}),
-                page.click('div.search_results > a'),
-            ]);
+            let journalList = await page.$$('div.search_results > a');
+            let foundJournal;
+            for (let journalIndex = 0; journalIndex < journalList.length; journalIndex++) {
+                let journalName = await journalList[journalIndex].$eval('span.jrnlname', el => el.innerText);
+                journalName = cleanTitle(journalName);
+                if (journalName == query || levenshtein(query, journalName) <= 4) {
+                    foundJournal = journalList[journalIndex];
+                    break;
+                }
+            }
 
-            let rank = await page.evaluate(() => {
-                let cellslideList = document.querySelectorAll('div.cellslide');
-                if (cellslideList && cellslideList.length && cellslideList.length > 0) {
-                    let cellslide = cellslideList[1];
-                    let tdList = cellslide.querySelectorAll('td');
-                    if (tdList && tdList.length && tdList.length > 0) {
-                        return tdList[tdList.length - 1].innerText;
-                    }
-                    else {
+            if (foundJournal) {
+                const [response] = await Promise.all([
+                    page.waitForNavigation({waitUntil:"domcontentloaded"}),
+                    foundJournal.click(),
+                ]);
+    
+                let rank = await page.evaluate(() => {
+                    let cellslideList = document.querySelectorAll('div.cellslide');
+                    if (cellslideList && cellslideList.length && cellslideList.length > 0) {
+                        let cellslide = cellslideList[1];
+                        let tdList = cellslide.querySelectorAll('td');
+                        if (tdList && tdList.length && tdList.length > 0) {
+                            return tdList[tdList.length - 1].innerText;
+                        }
+                        else {
+                            return 'unknown';
+                        }
+                    } else {
                         return 'unknown';
                     }
-                } else {
-                    return 'unknown';
-                }
-            });
-            entry.rank = rank;
+                });
+                entry.rank = rank;
+                logger.info(`Found rank: ${rank}`);
+    
 
-            logger.info(`Found rank: ${rank}`);
+            } else {
+                entry.rank = 'unknown';
+                logger.warn(`No rank found`);
 
+            }
+            
         } catch(e) {
             entry.rank = 'unknown';
             logger.warn('No rank found');
@@ -227,7 +251,6 @@ function exportCSV(entryList,filename) {
     }
 }
 
-
 function cleanTitle(title) {
     let res = title;
     res.trim();
@@ -239,6 +262,8 @@ function cleanTitle(title) {
     res = res.trim();
     return res;
 }
+
+
 
 (async function run() {
 
