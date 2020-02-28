@@ -187,12 +187,13 @@ async function setScimagoRank(entryList) {
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
 
-        let cleanedTitle = cleanTitle(entry.fullTitle);
+        let cleanedFullTitle = cleanTitle(entry.fullTitle);
+        let cleanedTitle = cleanTitle(entry.title);
         let query;
         if (dblp2QueryPatch.has(cleanedTitle)) {
             query = dblp2QueryPatch.get(cleanedTitle);
         } else {
-            query = cleanedTitle;
+            query = cleanedFullTitle;
         }
         logger.info(`Try to rank: ${query}`);
             
