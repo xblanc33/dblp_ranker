@@ -1,4 +1,5 @@
 [
     {"dblp":"ESEC/SIGSOFT FSE", "query":"ESEC/FSE"},
-    {"dblp":"SIGSOFT FSE", "query":"ESEC/FSE"}
+    {"dblp":"SIGSOFT FSE", "query":"ESEC/FSE"},
+    {"dblp":"Softw. Test., Verif. Reliab.", "query":"Software Testing Verification and Reliability"}
 ]
