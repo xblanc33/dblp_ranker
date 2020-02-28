@@ -1,3 +1,4 @@
 [
-    {"dblp":"ESEC/SIGSOFT FSE", "query":"ESEC/FSE"}
+    {"dblp":"ESEC/SIGSOFT FSE", "query":"ESEC/FSE"},
+    {"dblp":"SIGSOFT FSE", "query":"ESEC/FSE"}
 ]
