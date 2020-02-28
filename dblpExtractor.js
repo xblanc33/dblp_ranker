@@ -234,10 +234,27 @@ async function setScimagoRank(entryList) {
                         let cellslideList = document.querySelectorAll('div.cellslide');
                         if (cellslideList && cellslideList.length && cellslideList.length > 0) {
                             let cellslide = cellslideList[1];
-                            let tdList = cellslide.querySelectorAll('td');
-                            if (tdList && tdList.length && tdList.length > 0) {
-                                return tdList[tdList.length - 1].innerText;
+                            let trList = cellslide.querySelectorAll('tbody > tr');
+                            let bestRank;
+                            let lastYear;
+                            if (trList && trList.length && trList.length > 2) {
+                                for (let indexTR = 0; indexTR < trList.length; indexTR++) {
+                                    const tdList = trList[indexTR].querySelectorAll('td');
+                                    const year = parseInt(tdList[1].innerText);
+                                    const rank = tdList[2].innerText;
+                                    if (lastYear === undefined || year > lastYear) {
+                                        lastYear = year;
+                                        bestRank = rank;
+                                    }
+                                    if (year >= lastYear && rank < bestRank) {
+                                        bestRank = rank;
+                                    }
+                                }
+                                return bestRank;
                             }
+                            /*if (tdList && tdList.length && tdList.length > 0) {
+                                return tdList[tdList.length - 1].innerText;
+                            }*/
                             else {
                                 return 'unknown';
                             }
