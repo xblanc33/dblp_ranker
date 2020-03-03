@@ -367,7 +367,6 @@ function cleanTitle(title) {
     //res = res.replace(/\(\d*\)/g, '');
     res = res.split('(')[0];
     res = res.split(',')[0];
-    res = res.replace(':','');
     res = res.replace(/&amp;/g, '');
     res = res.trim();
     return res;
