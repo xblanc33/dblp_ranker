@@ -169,13 +169,12 @@ function cleanTitle(title) {
     res = res.split('(')[0];
     res = res.split(',')[0];
     res = res.replace(':','');
+    //res = res.replace(/[\n\r]/g, '');
+    res = res.replace(/\s+/g, ' ').trim();
     res = res.replace(/&amp;/g, '');
     res = res.trim();
     return res;
 }
-
-
-
 (async function run() {
 
     var myArgs = process.argv.slice(1);
