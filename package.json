@@ -9,6 +9,8 @@
   "author": "xavier blanc",
   "license": "ISC",
   "dependencies": {
+    "command-line-args": "^5.1.1",
+    "command-line-usage": "^6.1.0",
     "js-levenshtein": "^1.1.6",
     "json2csv": "^4.5.4",
     "puppeteer": "^2.1.1",

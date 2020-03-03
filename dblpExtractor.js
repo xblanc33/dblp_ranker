@@ -5,6 +5,9 @@ const { Parser } = require('json2csv');
 const fs = require('fs');
 const levenshtein = require('js-levenshtein');
 
+const commandLineArgs = require('command-line-args')
+const commandLineUsage = require('command-line-usage')
+
 const HEADLESS = true;
 
 const logger = winston.createLogger({
@@ -119,9 +122,35 @@ async function extractEntryList(url) {
     return entryList;
 }
 
-async function setCoreRank(entryList) {
+function cacheLoad(filename, map) {
+    try {
+        const rawdata = fs.readFileSync(filename);
+        logger.info('Load cache from disk : ' + filename);
+        const cache = JSON.parse(rawdata);
+        for (let k of Object.keys(cache)) {
+            map.set(k, cache[k]);
+        }
+    } catch(e) {
+        logger.error(e);
+    }
+}
+
+function cacheSave(filename, cache) {
+    let obj = Object.create(null);
+    for (let [k,v] of cache) {
+      obj[k] = v;
+    }
+    fs.writeFileSync(filename, JSON.stringify(obj));
+    logger.info('Save cache on disk : ' + filename);
+}
+
+async function setCoreRank(entryList, options) {
     const CORE_URL = 'http://portal.core.edu.au/conf-ranks/';
-    let foundRank = new Map();
+    const cacheFilename = 'core.cache';
+    let cache = new Map();
+    if (options.cache) {
+        cacheLoad(cacheFilename, cache);
+    } 
 
     let browser = await puppeteer.launch({headless:HEADLESS});
     let page = await browser.newPage();
@@ -141,8 +170,8 @@ async function setCoreRank(entryList) {
 
         logger.info(`Try to rank: ${query}`);
 
-        if (foundRank.has(query+entry.year)) {
-            entry.rank = foundRank.get(query+entry.year);
+        if (cache.has(query+entry.year)) {
+            entry.rank = cache.get(query+entry.year);
             logger.info(`Found rank (in cache): ${entry.rank}`);
         } else {
             await page.goto(CORE_URL, {waitUntil:"domcontentloaded"});
@@ -183,26 +212,33 @@ async function setCoreRank(entryList) {
                     }
                 }, query);
                 entry.rank = rank;
-                foundRank.set(query+entry.year, entry.rank);
+                cache.set(query+entry.year, entry.rank);
 
                 logger.info(`Found rank: ${rank}`);
 
             } catch(e) {
                 entry.rank = 'unknown';
-                foundRank.set(query+entry.year, entry.rank);
+                cache.set(query+entry.year, entry.rank);
                 logger.warn(`No rank found`);
                 //logger.error(e);
             }
         }
+    }
+    if (options.cache) {
+        cacheSave(cacheFilename, cache);
     }
     await page.close();
     await browser.close();
 }
 
 
-async function setScimagoRank(entryList) {
+async function setScimagoRank(entryList, options) {
     const SCIMAGO_URL = 'https://www.scimagojr.com/';
-    let foundRank = new Map();
+    const cacheFilename = 'scimagojr.cache';
+    let cache = new Map();
+    if (options.cache) {
+        cacheLoad(cacheFilename, cache);
+    }
 
     let browser = await puppeteer.launch({headless:HEADLESS});
     let page = await browser.newPage();
@@ -223,8 +259,8 @@ async function setScimagoRank(entryList) {
         logger.info(`Try to rank: ${query}`);
             
 
-        if (foundRank.has(query+entry.year)) {
-            entry.rank = foundRank.get(query+entry.year);
+        if (cache.has(query+entry.year)) {
+            entry.rank = cache.get(query+entry.year);
             logger.info(`Found rank (in cache): ${entry.rank}`);
         } else {
             try {
@@ -322,29 +358,32 @@ async function setScimagoRank(entryList) {
                     }, entry.year);
                     entry.rank = rank.rank;
                     entry.rankYear = rank.rankYear;
-                    foundRank.set(query+entry.year, entry.rank);
+                    cache.set(query+entry.year, entry.rank);
                     logger.info(`Found rank: ${rank.rank} in year ${rank.rankYear}`);
                 } else {
                     entry.rank = 'unknown';
                     entry.rankYear = 'unknown';
-                    foundRank.set(query+entry.year, entry.rank);
+                    cache.set(query+entry.year, entry.rank);
                     logger.warn(`No rank found`);
                 }
                 
             } catch(e) {
                 entry.rank = 'unknown';
                 entry.rankYear = 'unknown';
-                foundRank.set(query+entry.year, entry.rank);
+                cache.set(query+entry.year, entry.rank);
                 logger.warn('No rank found');
                 //logger.error(e);
             }
         }
     }
+    if (options.cache) {
+        cacheSave(cacheFilename, cache);
+    }
     await page.close();
     await browser.close();
 }
 
-function exportCSV(entryList,filename) {
+function exportCSV(entryList, filename) {
     const fields = ['number', 'title', 'in', 'year', 'rank', 'rankYear'];
     const opts = { fields };
 
@@ -396,29 +435,54 @@ function getCoreYear(year) {
 
 (async function run() {
 
-    var myArgs = process.argv.slice(2);
+    const optionDefinitions = [
+        { name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide.'},
+        { name: 'cache', alias: 'c', type: Boolean, description: 'Use a local cache for the ranking.' },
+        { name: 'out', alias: 'o', type: String, typeLabel: '{underline file}', description: 'The output file to generate.' },
+        { name: 'url', type: String, defaultOption: true, description: 'URL of the target DBLP page.' }
+    ]
+    const sections = [
+        {
+          header: 'DBLP Ranker',
+          content: 'Grabs DBLP and tries to find rankings ({italic Core Ranks} and {italic Scimago}).'
+        },
+        {
+          header: 'Options',
+          optionList: optionDefinitions
+        }
+    ]
+    const usage = commandLineUsage(sections)
 
-    if (myArgs.length !== 2) {
-        logger.warn('two arguments are needed');
-        logger.warn('first argument must be the target DBPL url');
-        logger.warn('second argument must be the output file');
-    } else {
-        let url = myArgs[0];
-        let out = myArgs[1];
+    try {
+        const options = commandLineArgs(optionDefinitions).catch(function (e) {})
+    } catch(e) {
+        console.log('Illegal option');
+        return
+    }
+
+    const valid = options.help || ( options.url && options.out )
+
+    if (valid) {
+        if (options.help) {
+            console.log(usage);
+            return;
+        }
 
         loadPatch();
 
-        let entryList = await extractEntryList(url);
+        let entryList = await extractEntryList(options.url);
 
         let conferenceList = entryList.filter(entry => entry.kind == 'conference');
-        await setCoreRank(conferenceList);
+        await setCoreRank(conferenceList, options);
 
         let journalList = entryList.filter(entry => entry.kind == 'journal');
-        await setScimagoRank(journalList);
+        await setScimagoRank(journalList, options);
 
-        exportCSV(entryList, out);
+        exportCSV(entryList, options.out);
+    } else {
+        console.log(usage);
     }
-    
+
 })();
 
 
