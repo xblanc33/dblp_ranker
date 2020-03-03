@@ -2,24 +2,31 @@
 
 It grabs DBLP and tries to find rankings (Core Ranks and Scimago)
 
-## install
+## Install
 
     npm i
 
-## run
+## Run
 
-It needs two arguments: the target URL (from DBLP), the output file (CSV)
+It needs at least two arguments: the target URL (DBLP page) and the output file (CSV)
 
-    node dblpExtractor.js url out
-
+    node dblpExtractor.js DBLP_URL -o CSV file
 
 For example
 
-    node dblpExtractor.js https://dblp.uni-trier.de/pers/b/Blanc_0001:Xavier.html xavier.csv
+    node dblpExtractor.js https://dblp.uni-trier.de/pers/b/Blanc_0001:Xavier.html -o xavier.csv
 
+## Options
+```
+  -h, --help         Print this usage guide.
+  -c, --cache        Use a local cache for the ranking.
+  -o, --out file     The output file to generate.
+  -p, --patch file   DBLP and Scimago rewriting rules for ranking queries.
+                     Default value is *patch.json*
+  --url url          URL of the target DBLP page.
+```
 
-## patches
+## Patches
 
-Some DBLP entries do not match Core or Scimago queries.
-
-The patch.json file allows you to defines patches (between DBLP entry and Core/Scimago qeury).
+Some DBLP entries do not match *Core* or *Scimago* queries.
+The `--patch` option allows to specify user-specific rewriting rules between a DBLP entry and its corresponding Core/Scimago query.
