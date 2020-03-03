@@ -53,6 +53,8 @@ async function extractEntryList(url) {
         let entryList = document.querySelectorAll(ENTRY_SELECTOR);
         entryList.forEach(entry => {
             let extractedEntry = {};
+
+            extractedEntry.year = getYear(entry);
             
             let img = entry.querySelector(CONF_JOURN_IMG_SELECTOR);
             switch (img.title) {
@@ -76,6 +78,15 @@ async function extractEntryList(url) {
             
         });
         return extractedEntryList;
+
+        function getYear(node) {
+            let previous = node.previousElementSibling;
+            if (previous.className === 'year') {
+                return parseInt(previous.innerText);
+            } else {
+                return getYear(previous);
+            }
+        }
     });
 
     logger.info('GET DBLP ENTRIES');
@@ -284,7 +295,7 @@ async function setScimagoRank(entryList) {
 }
 
 function exportCSV(entryList,filename) {
-    const fields = ['number', 'title', 'rank'];
+    const fields = ['number', 'title', 'year', 'rank'];
     const opts = { fields };
 
     try {
