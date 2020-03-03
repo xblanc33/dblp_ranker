@@ -44,7 +44,8 @@ async function extractEntryList(url) {
         const CONF_JOURN_IMG_SELECTOR = 'div.box img';
         const NUMBER_SELECTOR = 'div.nr';
         const ENTRY_LINK_SELECTOR = 'cite > a';
-        const ENTRY_NAME_SELECTOR = 'cite > a > span > span';
+        const ENTRY_IN_NAME_SELECTOR = 'cite > a > span > span';
+        const ENTRY_TITLE_SELECTOR = 'span.title';
 
         const CONF_IMG_TITLE = 'Conference and Workshop Papers';
         const JOURNAL_IMG_TITLE = 'Journal Articles';
@@ -65,12 +66,14 @@ async function extractEntryList(url) {
                 default: extractedEntry.kind = 'unknown';
             } 
 
-            if (entry.querySelector(NUMBER_SELECTOR) && entry.querySelector(ENTRY_LINK_SELECTOR) && entry.querySelector(ENTRY_NAME_SELECTOR)) {
+            if (entry.querySelector(NUMBER_SELECTOR) && entry.querySelector(ENTRY_LINK_SELECTOR) && entry.querySelector(ENTRY_IN_NAME_SELECTOR)) {
                 extractedEntry.number = entry.querySelector(NUMBER_SELECTOR).id;
 
                 extractedEntry.link = entry.querySelector(ENTRY_LINK_SELECTOR).href;
 
-                extractedEntry.title = entry.querySelector(ENTRY_NAME_SELECTOR).innerText.split('(')[0];
+                extractedEntry.in = entry.querySelector(ENTRY_IN_NAME_SELECTOR).innerText;
+
+                extractedEntry.title = entry.querySelector(ENTRY_TITLE_SELECTOR).innerText;
 
                 extractedEntryList.push(extractedEntry);
 
@@ -94,11 +97,11 @@ async function extractEntryList(url) {
     for (let index = 0; index < entryList.length; index++) {
         if (entryList[index].kind === 'journal') {
             await page.goto(entryList[index].link, {waitUntil:"domcontentloaded"});
-            let fullTitle =  await page.evaluate(() => {
+            let inFull =  await page.evaluate(() => {
                 return document.querySelector('h1').innerHTML;
             });
-            entryList[index].fullTitle = fullTitle;
-            logger.info(`GET FULL TITLE (For Journal): ${fullTitle}`);
+            entryList[index].inFull = inFull;
+            logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
         }
     }
 
@@ -121,24 +124,27 @@ async function setCoreRank(entryList) {
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
         
-        let cleanedTitle = cleanTitle(entry.title);
+        let cleanedConfName = cleanTitle(entry.in);
         let query;
-        if (dblp2QueryPatch.has(cleanedTitle)) {
-            query = dblp2QueryPatch.get(cleanedTitle);
+        if (dblp2QueryPatch.has(cleanedConfName)) {
+            query = dblp2QueryPatch.get(cleanedConfName);
         } else {
-            query = cleanedTitle;
+            query = cleanedConfName;
         }
 
         logger.info(`Try to rank: ${query}`);
 
-        if (foundRank.has(query)) {
-            entry.rank = foundRank.get(query);
+        if (foundRank.has(query+entry.year)) {
+            entry.rank = foundRank.get(query+entry.year);
             logger.info(`Found rank (in cache): ${entry.rank}`);
         } else {
             await page.goto(CORE_URL, {waitUntil:"domcontentloaded"});
             await page.waitForSelector('#searchform > input');
             const input = await page.$('#searchform > input');
             await input.type(query);
+
+            let coreYear = getCoreYear(entry.year);
+            await page.select('#searchform > select:nth-child(3)', coreYear);
 
             const [res] = await Promise.all([
                 page.waitForNavigation({waitUntil:"domcontentloaded"}),
@@ -169,13 +175,13 @@ async function setCoreRank(entryList) {
                     }
                 }, query);
                 entry.rank = rank;
-                foundRank.set(query, entry.rank);
+                foundRank.set(query+entry.year, entry.rank);
 
                 logger.info(`Found rank: ${rank}`);
 
             } catch(e) {
                 entry.rank = 'unknown';
-                foundRank.set(query, entry.rank);
+                foundRank.set(query+entry.year, entry.rank);
                 logger.warn(`No rank found`);
                 //logger.error(e);
             }
@@ -198,19 +204,19 @@ async function setScimagoRank(entryList) {
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
 
-        let cleanedFullTitle = cleanTitle(entry.fullTitle);
-        let cleanedTitle = cleanTitle(entry.title);
+        let cleanedJournalFullName = cleanTitle(entry.inFull);
+        let cleanedJournalName = cleanTitle(entry.in);
         let query;
-        if (dblp2QueryPatch.has(cleanedTitle)) {
-            query = dblp2QueryPatch.get(cleanedTitle);
+        if (dblp2QueryPatch.has(cleanedJournalName)) {
+            query = dblp2QueryPatch.get(cleanedJournalName);
         } else {
-            query = cleanedFullTitle;
+            query = cleanedJournalFullName;
         }
         logger.info(`Try to rank: ${query}`);
             
 
-        if (foundRank.has(query)) {
-            entry.rank = foundRank.get(query);
+        if (foundRank.has(query+entry.year)) {
+            entry.rank = foundRank.get(query+entry.year);
             logger.info(`Found rank (in cache): ${entry.rank}`);
         } else {
             try {
@@ -274,17 +280,17 @@ async function setScimagoRank(entryList) {
                         }
                     });
                     entry.rank = rank;
-                    foundRank.set(query, entry.rank);
+                    foundRank.set(query+entry.year, entry.rank);
                     logger.info(`Found rank: ${rank}`);
                 } else {
                     entry.rank = 'unknown';
-                    foundRank.set(query, entry.rank);
+                    foundRank.set(query+entry.year, entry.rank);
                     logger.warn(`No rank found`);
                 }
                 
             } catch(e) {
                 entry.rank = 'unknown';
-                foundRank.set(query, entry.rank);
+                foundRank.set(query+entry.year, entry.rank);
                 logger.warn('No rank found');
                 //logger.error(e);
             }
@@ -295,7 +301,7 @@ async function setScimagoRank(entryList) {
 }
 
 function exportCSV(entryList,filename) {
-    const fields = ['number', 'title', 'year', 'rank'];
+    const fields = ['number', 'title', 'in', 'year', 'rank'];
     const opts = { fields };
 
     try {
@@ -321,6 +327,25 @@ function cleanTitle(title) {
     res = res.replace(/&amp;/g, '');
     res = res.trim();
     return res;
+}
+
+function getCoreYear(year) {
+    if (year >= 2018) {
+        return "CORE2018";
+    } 
+    if (year >= 2017) {
+        return "CORE2017";
+    }
+    if (year >= 2014) {
+        return "CORE2014";
+    }
+    if (year >= 2013) {
+        return "CORE2013";
+    }
+    if (year >= 2010) {
+        return "ERA2010";
+    }
+    return "CORE2008";
 }
 
 
