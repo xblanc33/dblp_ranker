@@ -151,6 +151,7 @@ async function setCoreRank(entryList) {
             await input.type(query);
 
             let coreYear = getCoreYear(entry.year);
+            entry.rankYear = coreYear;
             await page.select('#searchform > select:nth-child(3)', coreYear);
 
             const [res] = await Promise.all([
