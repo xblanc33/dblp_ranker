@@ -54,8 +54,6 @@ async function extractEntryList(url) {
         let entryList = document.querySelectorAll(ENTRY_SELECTOR);
         entryList.forEach(entry => {
             let extractedEntry = {};
-
-            extractedEntry.year = getYear(entry);
             
             let img = entry.querySelector(CONF_JOURN_IMG_SELECTOR);
             switch (img.title) {
@@ -63,20 +61,29 @@ async function extractEntryList(url) {
                     break;
                 case CONF_IMG_TITLE : extractedEntry.kind = 'conference';
                     break;
-                default: extractedEntry.kind = 'unknown';
+                default: extractedEntry.kind = undefined;
             } 
 
-            if (entry.querySelector(NUMBER_SELECTOR) && entry.querySelector(ENTRY_LINK_SELECTOR) && entry.querySelector(ENTRY_IN_NAME_SELECTOR)) {
+            if (entry.querySelector(NUMBER_SELECTOR)) {
                 extractedEntry.number = entry.querySelector(NUMBER_SELECTOR).id;
+            }
 
+            if (entry.querySelector(ENTRY_LINK_SELECTOR)) {
                 extractedEntry.link = entry.querySelector(ENTRY_LINK_SELECTOR).href;
+            }
 
+            if (entry.querySelector(ENTRY_IN_NAME_SELECTOR)) {
                 extractedEntry.in = entry.querySelector(ENTRY_IN_NAME_SELECTOR).innerText;
+            }
 
+            if (entry.querySelector(ENTRY_TITLE_SELECTOR)) {
                 extractedEntry.title = entry.querySelector(ENTRY_TITLE_SELECTOR).innerText;
+            }
 
+            extractedEntry.year = getYear(entry);
+
+            if (extractedEntry.kind) {
                 extractedEntryList.push(extractedEntry);
-
             }
             
         });
@@ -247,49 +254,85 @@ async function setScimagoRank(entryList) {
                         foundJournal.click(),
                     ]);
         
-                    let rank = await page.evaluate(() => {
+                    let rank = await page.evaluate((entryYear) => {
                         let cellslideList = document.querySelectorAll('div.cellslide');
                         if (cellslideList && cellslideList.length && cellslideList.length > 0) {
                             let cellslide = cellslideList[1];
                             let trList = cellslide.querySelectorAll('tbody > tr');
-                            let bestRank;
                             let lastYear;
+                            let bestRank4LastYear;
+                            let bestRank4EntryYear;
+                            let firstYear;
+                            let bestRank4FirstYear;
                             if (trList && trList.length && trList.length > 2) {
                                 for (let indexTR = 0; indexTR < trList.length; indexTR++) {
                                     const tdList = trList[indexTR].querySelectorAll('td');
-                                    const year = parseInt(tdList[1].innerText);
-                                    const rank = tdList[2].innerText;
-                                    if (lastYear === undefined || year > lastYear) {
-                                        lastYear = year;
-                                        bestRank = rank;
+                                    const currentYear = parseInt(tdList[1].innerText);
+                                    const currentRank = tdList[2].innerText;
+                                    
+                                    if (bestRank4FirstYear === undefined) {
+                                        bestRank4FirstYear = currentRank;
+                                        firstYear = currentYear;
+                                    } else {
+                                        if (currentYear < firstYear) {
+                                            bestRank4FirstYear = currentRank;
+                                            firstYear = currentYear;
+                                        }
+                                        if (currentYear == firstYear && currentRank < bestRank4FirstYear) {
+                                            bestRank4FirstYear = currentRank;
+                                        }
                                     }
-                                    if (year >= lastYear && rank < bestRank) {
-                                        bestRank = rank;
+
+                                    if (currentYear === entryYear) {
+                                        if (bestRank4EntryYear === undefined) {
+                                            bestRank4EntryYear = currentRank;
+                                        } else if (currentRank < bestRank4EntryYear) {
+                                            bestRank4EntryYear = currentRank;
+                                        }
+                                    }
+
+                                    if (bestRank4LastYear === undefined) {
+                                        bestRank4LastYear = currentRank;
+                                        lastYear = currentYear;
+                                    } else {
+                                        if (currentYear > lastYear) {
+                                            bestRank4LastYear = currentRank;
+                                            lastYear = currentYear;
+                                        }
+                                        if (currentYear == lastYear && currentRank < bestRank4LastYear) {
+                                            bestRank4LastYear = currentRank;
+                                        }
                                     }
                                 }
-                                return bestRank;
+                                if (bestRank4EntryYear) {
+                                    return {rank:bestRank4EntryYear, rankYear:entryYear};
+                                }
+                                if (entryYear <= firstYear) {
+                                    return {rank:bestRank4FirstYear, rankYear:firstYear};
+                                }
+                                return {rank:bestRank4LastYear, rankYear:lastYear};
                             }
-                            /*if (tdList && tdList.length && tdList.length > 0) {
-                                return tdList[tdList.length - 1].innerText;
-                            }*/
                             else {
-                                return 'unknown';
+                                return {rank:'unknown', rankYear:'unknown'};
                             }
                         } else {
-                            return 'unknown';
+                            return {rank:'unknown', rankYear:'unknown'};
                         }
-                    });
-                    entry.rank = rank;
+                    }, entry.year);
+                    entry.rank = rank.rank;
+                    entry.rankYear = rank.rankYear;
                     foundRank.set(query+entry.year, entry.rank);
-                    logger.info(`Found rank: ${rank}`);
+                    logger.info(`Found rank: ${rank.rank} in year ${rank.rankYear}`);
                 } else {
                     entry.rank = 'unknown';
+                    entry.rankYear = 'unknown';
                     foundRank.set(query+entry.year, entry.rank);
                     logger.warn(`No rank found`);
                 }
                 
             } catch(e) {
                 entry.rank = 'unknown';
+                entry.rankYear = 'unknown';
                 foundRank.set(query+entry.year, entry.rank);
                 logger.warn('No rank found');
                 //logger.error(e);
@@ -301,7 +344,7 @@ async function setScimagoRank(entryList) {
 }
 
 function exportCSV(entryList,filename) {
-    const fields = ['number', 'title', 'in', 'year', 'rank'];
+    const fields = ['number', 'title', 'in', 'year', 'rank', 'rankYear'];
     const opts = { fields };
 
     try {
