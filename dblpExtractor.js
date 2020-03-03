@@ -14,10 +14,10 @@ const logger = winston.createLogger({
     level: 'info',
     format: winston.format.json(),
     transports: [
-      new winston.transports.File({ filename: 'error.log', level: 'error' }),
+        new winston.transports.File({ filename: 'error.log', level: 'error' }),
     ]
 });
-  
+
 if (process.env.NODE_ENV !== 'production') {
     logger.add(new winston.transports.Console({
         format: winston.format.simple()
@@ -35,13 +35,13 @@ function loadPatch() {
 }
 
 async function extractEntryList(url) {
-    let browser = await puppeteer.launch({headless:HEADLESS});
+    let browser = await puppeteer.launch({ headless: HEADLESS });
     let page = await browser.newPage();
-    await page.goto(url, {waitUntil:"domcontentloaded"});
+    await page.goto(url, { waitUntil: "domcontentloaded" });
 
     logger.info('OPEN DBLP');
 
-    let entryList =  await page.evaluate(() => {
+    let entryList = await page.evaluate(() => {
 
         const ENTRY_SELECTOR = '#publ-section li.entry';
         const CONF_JOURN_IMG_SELECTOR = 'div.box img';
@@ -57,15 +57,15 @@ async function extractEntryList(url) {
         let entryList = document.querySelectorAll(ENTRY_SELECTOR);
         entryList.forEach(entry => {
             let extractedEntry = {};
-            
+
             let img = entry.querySelector(CONF_JOURN_IMG_SELECTOR);
             switch (img.title) {
-                case JOURNAL_IMG_TITLE : extractedEntry.kind = 'journal';
+                case JOURNAL_IMG_TITLE: extractedEntry.kind = 'journal';
                     break;
-                case CONF_IMG_TITLE : extractedEntry.kind = 'conference';
+                case CONF_IMG_TITLE: extractedEntry.kind = 'conference';
                     break;
                 default: extractedEntry.kind = undefined;
-            } 
+            }
 
             if (entry.querySelector(NUMBER_SELECTOR)) {
                 extractedEntry.number = entry.querySelector(NUMBER_SELECTOR).id;
@@ -88,7 +88,7 @@ async function extractEntryList(url) {
             if (extractedEntry.kind) {
                 extractedEntryList.push(extractedEntry);
             }
-            
+
         });
         return extractedEntryList;
 
@@ -106,8 +106,8 @@ async function extractEntryList(url) {
 
     for (let index = 0; index < entryList.length; index++) {
         if (entryList[index].kind === 'journal') {
-            await page.goto(entryList[index].link, {waitUntil:"domcontentloaded"});
-            let inFull =  await page.evaluate(() => {
+            await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
+            let inFull = await page.evaluate(() => {
                 return document.querySelector('h1').innerHTML;
             });
             entryList[index].inFull = inFull;
@@ -130,15 +130,15 @@ function cacheLoad(filename, map) {
         for (let k of Object.keys(cache)) {
             map.set(k, cache[k]);
         }
-    } catch(e) {
+    } catch (e) {
         logger.error(e);
     }
 }
 
 function cacheSave(filename, cache) {
     let obj = Object.create(null);
-    for (let [k,v] of cache) {
-      obj[k] = v;
+    for (let [k, v] of cache) {
+        obj[k] = v;
     }
     fs.writeFileSync(filename, JSON.stringify(obj));
     logger.info('Save cache on disk : ' + filename);
@@ -150,16 +150,16 @@ async function setCoreRank(entryList, options) {
     let cache = new Map();
     if (options.cache) {
         cacheLoad(cacheFilename, cache);
-    } 
+    }
 
-    let browser = await puppeteer.launch({headless:HEADLESS});
+    let browser = await puppeteer.launch({ headless: HEADLESS });
     let page = await browser.newPage();
 
     logger.info('OPEN CORE RANK');
 
     for (let index = 0; index < entryList.length; index++) {
         const entry = entryList[index];
-        
+
         let cleanedConfName = cleanTitle(entry.in);
         let query;
         if (dblp2QueryPatch.has(cleanedConfName)) {
@@ -170,11 +170,11 @@ async function setCoreRank(entryList, options) {
 
         logger.info(`Try to rank: ${query}`);
 
-        if (cache.has(query+entry.year)) {
-            entry.rank = cache.get(query+entry.year);
+        if (cache.has(query + entry.year)) {
+            entry.rank = cache.get(query + entry.year);
             logger.info(`Found rank (in cache): ${entry.rank}`);
         } else {
-            await page.goto(CORE_URL, {waitUntil:"domcontentloaded"});
+            await page.goto(CORE_URL, { waitUntil: "domcontentloaded" });
             await page.waitForSelector('#searchform > input');
             const input = await page.$('#searchform > input');
             await input.type(query);
@@ -184,41 +184,41 @@ async function setCoreRank(entryList, options) {
             await page.select('#searchform > select:nth-child(3)', coreYear);
 
             const [res] = await Promise.all([
-                page.waitForNavigation({waitUntil:"domcontentloaded"}),
+                page.waitForNavigation({ waitUntil: "domcontentloaded" }),
                 page.click('#searchform > input[type=submit]:nth-child(7)'),
             ]);
-            
-            try {
-                await page.waitFor('table',{timeout:3000});
 
-                let rank = await page.evaluate( query => {
+            try {
+                await page.waitFor('table', { timeout: 3000 });
+
+                let rank = await page.evaluate(query => {
                     let trList = document.querySelectorAll('tbody tr');
                     if (trList.length > 0) {
-                        let unmatch = query +" with ";
+                        let unmatch = query + " with ";
                         for (let trIndex = 1; trIndex < trList.length; trIndex++) {
                             let acronym = trList[trIndex].querySelectorAll('td')[1].innerText;
                             let name = trList[trIndex].querySelectorAll('td')[0].innerText;
                             let rank = trList[trIndex].querySelectorAll('td')[3].innerText;
-                            
-                            if ( query == acronym.trim().toLowerCase() || query == name.trim().toLowerCase()) {
+
+                            if (query == acronym.trim().toLowerCase() || query == name.trim().toLowerCase()) {
                                 return rank;
                             } else {
-                                unmatch += acronym.trim().toLowerCase()+";";
+                                unmatch += acronym.trim().toLowerCase() + ";";
                             }
                         }
-                        return 'no matching result:'+unmatch;
+                        return 'no matching result:' + unmatch;
                     } else {
                         return 'unknown';
                     }
                 }, query);
                 entry.rank = rank;
-                cache.set(query+entry.year, entry.rank);
+                cache.set(query + entry.year, entry.rank);
 
                 logger.info(`Found rank: ${rank}`);
 
-            } catch(e) {
+            } catch (e) {
                 entry.rank = 'unknown';
-                cache.set(query+entry.year, entry.rank);
+                cache.set(query + entry.year, entry.rank);
                 logger.warn(`No rank found`);
                 //logger.error(e);
             }
@@ -240,7 +240,7 @@ async function setScimagoRank(entryList, options) {
         cacheLoad(cacheFilename, cache);
     }
 
-    let browser = await puppeteer.launch({headless:HEADLESS});
+    let browser = await puppeteer.launch({ headless: HEADLESS });
     let page = await browser.newPage();
 
     logger.info('OPEN SCIMAGO');
@@ -257,23 +257,23 @@ async function setScimagoRank(entryList, options) {
             query = cleanedJournalFullName;
         }
         logger.info(`Try to rank: ${query}`);
-            
 
-        if (cache.has(query+entry.year)) {
-            entry.rank = cache.get(query+entry.year);
+
+        if (cache.has(query + entry.year)) {
+            entry.rank = cache.get(query + entry.year);
             logger.info(`Found rank (in cache): ${entry.rank}`);
         } else {
             try {
-                await page.goto(SCIMAGO_URL, {waitUntil:"domcontentloaded"});
+                await page.goto(SCIMAGO_URL, { waitUntil: "domcontentloaded" });
                 const input = await page.$('#searchbox > input');
                 await input.type(query);
-    
+
                 const [res] = await Promise.all([
-                    page.waitForNavigation({waitUntil:"domcontentloaded"}),
+                    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
                     page.click('#searchbutton'),
                 ]);
-                await page.waitFor('div.search_results > a',{timeout:1000});
-    
+                await page.waitFor('div.search_results > a', { timeout: 1000 });
+
                 let journalList = await page.$$('div.search_results > a');
                 let foundJournal;
                 for (let journalIndex = 0; journalIndex < journalList.length; journalIndex++) {
@@ -284,13 +284,13 @@ async function setScimagoRank(entryList, options) {
                         break;
                     }
                 }
-    
+
                 if (foundJournal) {
                     const [response] = await Promise.all([
-                        page.waitForNavigation({waitUntil:"domcontentloaded"}),
+                        page.waitForNavigation({ waitUntil: "domcontentloaded" }),
                         foundJournal.click(),
                     ]);
-        
+
                     let rank = await page.evaluate((entryYear) => {
                         let cellslideList = document.querySelectorAll('div.cellslide');
                         if (cellslideList && cellslideList.length && cellslideList.length > 0) {
@@ -306,7 +306,7 @@ async function setScimagoRank(entryList, options) {
                                     const tdList = trList[indexTR].querySelectorAll('td');
                                     const currentYear = parseInt(tdList[1].innerText);
                                     const currentRank = tdList[2].innerText;
-                                    
+
                                     if (bestRank4FirstYear === undefined) {
                                         bestRank4FirstYear = currentRank;
                                         firstYear = currentYear;
@@ -342,35 +342,35 @@ async function setScimagoRank(entryList, options) {
                                     }
                                 }
                                 if (bestRank4EntryYear) {
-                                    return {rank:bestRank4EntryYear, rankYear:entryYear};
+                                    return { rank: bestRank4EntryYear, rankYear: entryYear };
                                 }
                                 if (entryYear <= firstYear) {
-                                    return {rank:bestRank4FirstYear, rankYear:firstYear};
+                                    return { rank: bestRank4FirstYear, rankYear: firstYear };
                                 }
-                                return {rank:bestRank4LastYear, rankYear:lastYear};
+                                return { rank: bestRank4LastYear, rankYear: lastYear };
                             }
                             else {
-                                return {rank:'unknown', rankYear:'unknown'};
+                                return { rank: 'unknown', rankYear: 'unknown' };
                             }
                         } else {
-                            return {rank:'unknown', rankYear:'unknown'};
+                            return { rank: 'unknown', rankYear: 'unknown' };
                         }
                     }, entry.year);
                     entry.rank = rank.rank;
                     entry.rankYear = rank.rankYear;
-                    cache.set(query+entry.year, entry.rank);
+                    cache.set(query + entry.year, entry.rank);
                     logger.info(`Found rank: ${rank.rank} in year ${rank.rankYear}`);
                 } else {
                     entry.rank = 'unknown';
                     entry.rankYear = 'unknown';
-                    cache.set(query+entry.year, entry.rank);
+                    cache.set(query + entry.year, entry.rank);
                     logger.warn(`No rank found`);
                 }
-                
-            } catch(e) {
+
+            } catch (e) {
                 entry.rank = 'unknown';
                 entry.rankYear = 'unknown';
-                cache.set(query+entry.year, entry.rank);
+                cache.set(query + entry.year, entry.rank);
                 logger.warn('No rank found');
                 //logger.error(e);
             }
@@ -406,7 +406,7 @@ function cleanTitle(title) {
     //res = res.replace(/\(\d*\)/g, '');
     res = res.split('(')[0];
     res = res.split(',')[0];
-    res = res.replace(':','');
+    res = res.replace(':', '');
     res = res.replace(/&amp;/g, '');
     res = res.trim();
     return res;
@@ -415,7 +415,7 @@ function cleanTitle(title) {
 function getCoreYear(year) {
     if (year >= 2018) {
         return "CORE2018";
-    } 
+    }
     if (year >= 2017) {
         return "CORE2017";
     }
@@ -436,51 +436,51 @@ function getCoreYear(year) {
 (async function run() {
 
     const optionDefinitions = [
-        { name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide.'},
+        { name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide.' },
         { name: 'cache', alias: 'c', type: Boolean, description: 'Use a local cache for the ranking.' },
         { name: 'out', alias: 'o', type: String, typeLabel: '{underline file}', description: 'The output file to generate.' },
         { name: 'url', type: String, defaultOption: true, description: 'URL of the target DBLP page.' }
     ]
     const sections = [
         {
-          header: 'DBLP Ranker',
-          content: 'Grabs DBLP and tries to find rankings ({italic Core Ranks} and {italic Scimago}).'
+            header: 'DBLP Ranker',
+            content: 'Grabs DBLP and tries to find rankings ({italic Core Ranks} and {italic Scimago}).'
         },
         {
-          header: 'Options',
-          optionList: optionDefinitions
+            header: 'Options',
+            optionList: optionDefinitions
         }
     ]
     const usage = commandLineUsage(sections)
 
     try {
-        const options = commandLineArgs(optionDefinitions).catch(function (e) {})
-    } catch(e) {
-        console.log('Illegal option');
-        return
-    }
+        const options = commandLineArgs(optionDefinitions)
+        const valid = options.help || (options.url && options.out)
 
-    const valid = options.help || ( options.url && options.out )
+        if (valid) {
+            if (options.help) {
+                console.log(usage);
+                return;
+            }
 
-    if (valid) {
-        if (options.help) {
+            loadPatch();
+
+            let entryList = await extractEntryList(options.url);
+
+            let conferenceList = entryList.filter(entry => entry.kind == 'conference');
+            await setCoreRank(conferenceList, options);
+
+            let journalList = entryList.filter(entry => entry.kind == 'journal');
+            await setScimagoRank(journalList, options);
+
+            exportCSV(entryList, options.out);
+        } else {
             console.log(usage);
-            return;
         }
 
-        loadPatch();
-
-        let entryList = await extractEntryList(options.url);
-
-        let conferenceList = entryList.filter(entry => entry.kind == 'conference');
-        await setCoreRank(conferenceList, options);
-
-        let journalList = entryList.filter(entry => entry.kind == 'journal');
-        await setScimagoRank(journalList, options);
-
-        exportCSV(entryList, options.out);
-    } else {
-        console.log(usage);
+    } catch (e) {
+        console.log('Illegal option');
+        return
     }
 
 })();
