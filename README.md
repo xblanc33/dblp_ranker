@@ -18,8 +18,8 @@ For example
     node dblpExtractor.js https://dblp.uni-trier.de/pers/b/Blanc_0001:Xavier.html xavier.csv
 
 
-## patchs
+## patches
 
-Some DBLP entries do not match to Core or Scimago.
+Some DBLP entries do not match Core or Scimago queries.
 
-The patch.json file allows you to defines patches.
+The patch.json file allows you to defines patches (between DBLP entry and Core/Scimago qeury).
