@@ -26,8 +26,8 @@ if (process.env.NODE_ENV !== 'production') {
 
 const dblp2QueryPatch = new Map();
 
-function loadPatch() {
-    let rawdata = fs.readFileSync('./patch.json');
+function loadPatch(filename) {
+    let rawdata = fs.readFileSync(filename);
     let patchList = JSON.parse(rawdata);
     patchList.forEach(patch => {
         dblp2QueryPatch.set(cleanTitle(patch.dblp), cleanTitle(patch.query));
@@ -439,9 +439,10 @@ function getCoreYear(year) {
 
     const optionDefinitions = [
         { name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide.' },
-        { name: 'cache', alias: 'c', type: Boolean, description: 'Use a local cache for the ranking.' },
+        { name: 'cache', alias: 'c', type: Boolean, defaultValue: false, description: 'Use a local cache for the ranking.' },
         { name: 'out', alias: 'o', type: String, typeLabel: '{underline file}', description: 'The output file to generate.' },
-        { name: 'url', type: String, defaultOption: true, description: 'URL of the target DBLP page.' }
+        { name: 'patch', alias: 'p', type: String, typeLabel: '{underline file}', defaultValue: "patch.json", description: 'DBLP and Scimago rewriting rules for ranking queries.\n Default value is {italic patch.json}'},
+        { name: 'url', type: String, typeLabel: '{underline url}', defaultOption: true, description: 'URL of the target DBLP page.' }
     ]
     const sections = [
         {
@@ -465,7 +466,7 @@ function getCoreYear(year) {
                 return;
             }
 
-            loadPatch();
+            loadPatch(options.patch);
 
             let entryList = await extractEntryList(options.url);
 
