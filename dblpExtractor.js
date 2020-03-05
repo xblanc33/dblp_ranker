@@ -168,11 +168,13 @@ async function setCoreRank(entryList, options) {
             query = cleanedConfName;
         }
 
-        logger.info(`Try to rank: ${query}`);
+        logger.info(`Try to rank: ${query} in ${entry.year}`);
 
         if (cache.has(query + entry.year)) {
-            entry.rank = cache.get(query + entry.year);
-            logger.info(`Found rank (in cache): ${entry.rank}`);
+            let c = cache.get(query + entry.year);
+            entry.rank = c.rank;
+            entry.rankYear = c.year;
+            logger.info(`Found rank (in cache): ${entry.rank} in ${entry.rankYear}`);
         } else {
             await page.goto(CORE_URL, { waitUntil: "domcontentloaded" });
             await page.waitForSelector('#searchform > input');
@@ -212,13 +214,13 @@ async function setCoreRank(entryList, options) {
                     }
                 }, query);
                 entry.rank = rank;
-                cache.set(query + entry.year, entry.rank);
+                cache.set(query + entry.year, { rank: entry.rank, year: entry.rankYear });
 
                 logger.info(`Found rank: ${rank}`);
 
             } catch (e) {
                 entry.rank = 'unknown';
-                cache.set(query + entry.year, entry.rank);
+                cache.set(query + entry.year, { rank: entry.rank, year: entry.rankYear });
                 logger.warn(`No rank found`);
                 //logger.error(e);
             }
@@ -256,12 +258,14 @@ async function setScimagoRank(entryList, options) {
         } else {
             query = cleanedJournalFullName;
         }
-        logger.info(`Try to rank: ${query}`);
+        logger.info(`Try to rank: ${query} in ${entry.year}`);
 
 
         if (cache.has(query + entry.year)) {
-            entry.rank = cache.get(query + entry.year);
-            logger.info(`Found rank (in cache): ${entry.rank}`);
+            let c = cache.get(query + entry.year);
+            entry.rank = c.rank;
+            entry.rankYear = c.year;
+            logger.info(`Found rank (in cache): ${entry.rank} in ${entry.rankYear}`);
         } else {
             try {
                 await page.goto(SCIMAGO_URL, { waitUntil: "domcontentloaded" });
@@ -358,19 +362,19 @@ async function setScimagoRank(entryList, options) {
                     }, entry.year);
                     entry.rank = rank.rank;
                     entry.rankYear = rank.rankYear;
-                    cache.set(query + entry.year, entry.rank);
+                    cache.set(query + entry.year, { rank: entry.rank, year: entry.rankYear });
                     logger.info(`Found rank: ${rank.rank} in year ${rank.rankYear}`);
                 } else {
                     entry.rank = 'unknown';
                     entry.rankYear = 'unknown';
-                    cache.set(query + entry.year, entry.rank);
+                    cache.set(query + entry.year, { rank: entry.rank, year: entry.rankYear });
                     logger.warn(`No rank found`);
                 }
 
             } catch (e) {
                 entry.rank = 'unknown';
                 entry.rankYear = 'unknown';
-                cache.set(query + entry.year, entry.rank);
+                cache.set(query + entry.year, { rank: entry.rank, year: entry.rankYear });
                 logger.warn('No rank found');
                 //logger.error(e);
             }
