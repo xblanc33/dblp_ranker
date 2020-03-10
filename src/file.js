@@ -18,7 +18,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 
 module.exports.exportCSV = function (entryList, filename) {
-    const fields = ['number', 'title', 'in', 'year', 'rank', 'rankYear'];
+    const fields = ['kind', 'member', 'coautors', 'title', 'in', 'year', 'rank', 'rankYear'];
     const opts = { fields };
 
     try {

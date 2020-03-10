@@ -10,11 +10,11 @@ It grabs DBLP and tries to find rankings (Core Ranks and Scimago)
 
 It needs at least two arguments: the target URL (DBLP page) and the output file (CSV)
 
-    node dblpExtractor.js DBLP_URL -o CSV file
+    node src/index.js URL -o file
 
 For example
 
-    node dblpExtractor.js https://dblp.uni-trier.de/pers/b/Blanc_0001:Xavier.html -o xavier.csv
+    node src/index.js https://dblp.uni-trier.de/pers/b/Blanc_0001:Xavier.html -o xavier
 
 ## Options
 ```
@@ -23,7 +23,6 @@ For example
   -o, --out file     The output file to generate.
   -p, --patch file   DBLP and Scimago rewriting rules for ranking queries.
                      Default value is *patch.json*
-  --url url          URL of the target DBLP page.
 ```
 
 ## Patches
