@@ -4,5 +4,8 @@
     {"dblp":"Softw. Test., Verif. Reliab.", "query":"Software Testing Verification and Reliability"},
     {"dblp":"Euro-Par", "query":"europar"},
     {"dblp":"PLOS@SOSP", "query":"PLOS"},
-    {"dblp":"acm sigops european workshop", "query":"sigops-ew"}
+    {"dblp":"acm sigops european workshop", "query":"sigops-ew"},
+    {"dblp":"CSL-LICS", "query":"LICS"},
+    {"dblp":"J. Comput. Syst. Sci.", "query":"Journal of Computer and System Sciences"},
+    {"dblp":"ITA", "query":"RAIRO - Theoretical Informatics and Applications"}
 ]
