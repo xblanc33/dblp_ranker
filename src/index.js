@@ -1,4 +1,5 @@
-const createEntryList = require('./dblpFetcher').createEntryList;
+const createEntryListFromDBLP = require('./dblpFetcher').createEntryList;
+const createEntryListFromHAL = require('./halFetcher').createEntryList;
 const setCoreRank = require('./rankFetcher').setCoreRank;
 const setScimagoRank = require('./rankFetcher').setScimagoRank;
 const loadPatch = require('./patchHandler');
@@ -8,6 +9,7 @@ const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 const exportCSV = require('./file').exportCSV;
 const exportJSON = require('./file').exportJSON;
+const addHAL2DBLP = require('./utilities').addHAL2DBLP;
 
 
 (async function run() {
@@ -18,12 +20,13 @@ const exportJSON = require('./file').exportJSON;
         { name: 'cache', alias: 'c', type: Boolean, defaultValue: false, description: 'Use a local cache for the ranking.' },
         { name: 'out', alias: 'o', type: String, typeLabel: '{underline file}', description: 'The output file to generate.' },
         { name: 'patch', alias: 'p', type: String, typeLabel: '{underline file}', defaultValue: "patch.json", description: 'DBLP and Scimago rewriting rules for ranking queries.\n Default value is {italic patch.json}'},
-        { name: 'url', type: String, typeLabel: '{underline url}', defaultOption: true, description: 'URL of the target DBLP page.' }
+        { name: 'url', type: String, typeLabel: '{underline url}', defaultOption: true, description: 'URL of the target DBLP page.' },
+        { name: 'idhal', type: String, type: String, description: 'idhal' }
     ]
     const sections = [
         {
             header: 'DBLP Ranker',
-            content: 'Grabs DBLP and tries to find rankings ({italic Core Ranks} and {italic Scimago}).'
+            content: 'Grabs DBLP or HAL and tries to find rankings ({italic Core Ranks} and {italic Scimago}).'
         },
         {
             header: 'Options',
@@ -34,7 +37,7 @@ const exportJSON = require('./file').exportJSON;
 
     try {
         const options = commandLineArgs(optionDefinitions)
-        const valid = options.help || (options.url && options.out)
+        const valid = options.help || (options.url && options.out) || (options.idhal && options.out)
 
         console.log(JSON.stringify(options));
 
@@ -44,7 +47,16 @@ const exportJSON = require('./file').exportJSON;
                 return;
             }
 
-            let entryList = await createEntryList(options.url);
+            let entryListDBLP = [];
+            let entryListHAL = [];
+            if (options.url) {
+                entryListDBLP = await createEntryListFromDBLP(options.url);
+            } else {
+                entryListHAL = await createEntryListFromHAL(options.idhal);
+            }
+            let entryList = addHAL2DBLP(entryListHAL, entryListDBLP);
+
+            
 
             let patchMap =  loadPatch(options.patch);
 

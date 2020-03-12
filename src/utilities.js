@@ -1,3 +1,4 @@
+
 module.exports.cleanTitle =  function (title) {
     let res = title;
     res.trim();
@@ -12,3 +13,14 @@ module.exports.cleanTitle =  function (title) {
     res = res.trim();
     return res;
 }
+
+module.exports.addHAL2DBLP = function (halEntryList, dblpEntryList ) {
+    let res = [...dblpEntryList];
+    halEntryList.forEach(halEntry => {
+        if (! dblpEntryList.includes(entry => clean(entry.title) == cleanTitle(halEntry.title))) {
+            res.push(halEntry);
+        }
+    });
+    return res;
+}
+
