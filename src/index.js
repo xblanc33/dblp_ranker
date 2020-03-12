@@ -19,7 +19,7 @@ const addHAL2DBLP = require('./utilities').addHAL2DBLP;
         { name: 'bib', alias: 'b', type: Boolean, defaultValue: true, description: 'Fetch BibTex.'},
         { name: 'cache', alias: 'c', type: Boolean, defaultValue: false, description: 'Use a local cache for the ranking.' },
         { name: 'out', alias: 'o', type: String, typeLabel: '{underline file}', description: 'The output file to generate.' },
-        { name: 'patch', alias: 'p', type: String, typeLabel: '{underline file}', defaultValue: "patch.json", description: 'DBLP and Scimago rewriting rules for ranking queries.\n Default value is {italic patch.json}'},
+        { name: 'patch', alias: 'p', type: String, typeLabel: '{underline file}', defaultValue: "./src/patch.json", description: 'DBLP and Scimago rewriting rules for ranking queries.\n Default value is {italic patch.json}'},
         { name: 'url', type: String, typeLabel: '{underline url}', defaultOption: true, description: 'URL of the target DBLP page.' },
         { name: 'idhal', type: String, type: String, description: 'idhal' }
     ]
@@ -51,12 +51,12 @@ const addHAL2DBLP = require('./utilities').addHAL2DBLP;
             let entryListHAL = [];
             if (options.url) {
                 entryListDBLP = await createEntryListFromDBLP(options.url);
-            } else {
+            } 
+            if (options.idhal) {
                 entryListHAL = await createEntryListFromHAL(options.idhal);
             }
-            let entryList = addHAL2DBLP(entryListHAL, entryListDBLP);
 
-            
+            let entryList = addHAL2DBLP(entryListHAL, entryListDBLP);
 
             let patchMap =  loadPatch(options.patch);
 

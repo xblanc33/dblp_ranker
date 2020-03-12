@@ -3,6 +3,7 @@ const winston = require('winston');
 const fetch = require('node-fetch');
 const puppeteer = require('puppeteer');
 
+const Cite = require('citation-js');
 const parseBibFile = require('bibtex').parseBibFile;
 const normalizeFieldValue = require('bibtex').normalizeFieldValue;
 
@@ -101,6 +102,7 @@ async function fetchEntry(page, url) {
                 res = res.trim();
                 res = res.toLowerCase();
                 res = res.replace(/\s+/g, ' ').trim();
+                res = res.replace(/[{}]+/g, '');
                 res = res.trim();
                 return res;
             }
@@ -140,10 +142,30 @@ async function setBibTex(entryList) {
                     .then(bibtex => {
                         logger.info('bibtex fetched from '+entry.bibHref);
                         entry.bibtex = bibtex;
-                        integrateBibTex(entry);
+                        integrateCitation(entry);
                     });
         }
     }
+}
+
+function integrateCitation(entry) {
+    try {
+        let cites = Cite.parse.bibtex.text(entry.bibtex);
+        let bibEntry = cites[0];
+        entry.year = parseInt((bibEntry.properties["YEAR"]));
+        if (entry.kind === "conference") {
+            entry.in = bibEntry.properties["BOOKTITLE"];
+            entry.inFull = bibEntry.properties["BOOKTITLE"];
+        } else if (entry.kind === "journal") {
+            entry.in = bibEntry.properties["JOURNAL"];
+            entry.inFull = bibEntry.properties["JOURNAL"];
+        }
+    } catch (e) {
+        logger.info('cannot parse bibtex, entry will be discarded');
+        entry.bibtex = undefined;
+    }
+    
+
 }
 
 
