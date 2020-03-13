@@ -91,7 +91,7 @@ async function fetchEntry(page, url) {
             trList.forEach(tr => {
                 if (tr.children && tr.children.length > 1) {
                     if (clean(tr.children[0].innerText) == 'type de document') {
-                        halEntry.kind = entryKind(clean(tr.children[1].innerText));
+                        halEntry.kind = entryKind(tr.children[1].innerText);
                     }
                 }
             });
@@ -108,6 +108,7 @@ async function fetchEntry(page, url) {
             }
 
             function entryKind(text) {
+                text = text.toLowerCase();
                 const CONF = 'conference';
                 const JOUR = 'journal';
                 if ((text == 'communication dans un congrès') || (text.includes('communication dans un congrès'))){
