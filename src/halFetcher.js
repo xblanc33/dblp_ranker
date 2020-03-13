@@ -110,9 +110,11 @@ async function fetchEntry(page, url) {
             function entryKind(text) {
                 const CONF = 'conference';
                 const JOUR = 'journal';
-                switch (text) {
-                    case 'communication dans un congrès' : return CONF;
-                    case 'article dans une revue' : return JOUR;
+                if ((text == 'communication dans un congrès') || (text.includes('communication dans un congrès'))){
+                    return CONF
+                }
+                if ((text == 'article dans une revue') || (text.includes('article dans une revue'))){
+                    return JOUR;
                 }
                 return undefined;
             }
