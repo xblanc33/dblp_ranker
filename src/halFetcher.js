@@ -90,7 +90,7 @@ async function fetchEntry(page, url) {
             let halEntry = {};
             trList.forEach(tr => {
                 if (tr.children && tr.children.length > 1) {
-                    if (clean(tr.children[0].innerText) == 'type de document') {
+                    if (clean(tr.children[0].innerText) == 'type de document' || clean(tr.children[0].innerText) == 'document types') {
                         halEntry.kind = entryKind(tr.children[1].innerText);
                     }
                 }
@@ -114,7 +114,13 @@ async function fetchEntry(page, url) {
                 if ((text == 'communication dans un congrès') || (text.includes('communication dans un congrès'))){
                     return CONF
                 }
+                if ((text == 'conference papers') || (text.includes('conference papers'))){
+                    return CONF
+                }
                 if ((text == 'article dans une revue') || (text.includes('article dans une revue'))){
+                    return JOUR;
+                }
+                if ((text == 'journal articles') || (text.includes('journal articles'))){
                     return JOUR;
                 }
                 return undefined;
