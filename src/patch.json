@@ -8,5 +8,6 @@
     {"dblp":"CSL-LICS", "query":"LICS"},
     {"dblp":"J. Comput. Syst. Sci.", "query":"Journal of Computer and System Sciences"},
     {"dblp":"ITA", "query":"RAIRO - Theoretical Informatics and Applications"},
-    {"dblp":"VTC-Fall", "query":"VTC"}
+    {"dblp":"VTC-Fall", "query":"VTC"},
+    {"dblp":"Petri Nets", "query":"ICATPN"}
 ]
