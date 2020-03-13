@@ -4,8 +4,8 @@ const fetch = require('node-fetch');
 const puppeteer = require('puppeteer');
 
 const Cite = require('citation-js');
-const parseBibFile = require('bibtex').parseBibFile;
-const normalizeFieldValue = require('bibtex').normalizeFieldValue;
+//const parseBibFile = require('bibtex').parseBibFile;
+//const normalizeFieldValue = require('bibtex').normalizeFieldValue;
 
 const HEADLESS = true;
 
@@ -169,7 +169,7 @@ function integrateCitation(entry) {
 }
 
 
-function integrateBibTex(entry) {
+/*function integrateBibTex(entry) {
     try {
         const bib = parseBibFile(entry.bibtex);
         let bibEntry = bib.entries_raw[0];
@@ -186,7 +186,7 @@ function integrateBibTex(entry) {
         entry.bibtex = undefined;
     }
     
-}
+}*/
 
 
 
