@@ -111,16 +111,16 @@ async function fetchEntry(page, url) {
                 text = text.toLowerCase();
                 const CONF = 'conference';
                 const JOUR = 'journal';
-                if ((text == 'communication dans un congrès') || (text.includes('communication dans un congrès'))){
+                if (text.includes('communication dans un congrès')){
                     return CONF
                 }
-                if ((text == 'conference papers') || (text.includes('conference papers'))){
+                if (text.includes('conference papers')){
                     return CONF
                 }
-                if ((text == 'article dans une revue') || (text.includes('article dans une revue'))){
+                if (text.includes('article dans une revue')){
                     return JOUR;
                 }
-                if ((text == 'journal articles') || (text.includes('journal articles'))){
+                if (text.includes('journal articles')){
                     return JOUR;
                 }
                 return undefined;
