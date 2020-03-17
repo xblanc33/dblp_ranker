@@ -9,5 +9,9 @@
     {"dblp":"J. Comput. Syst. Sci.", "query":"Journal of Computer and System Sciences"},
     {"dblp":"ITA", "query":"RAIRO - Theoretical Informatics and Applications"},
     {"dblp":"VTC-Fall", "query":"VTC"},
-    {"dblp":"Petri Nets", "query":"ICATPN"}
+    {"dblp":"Petri Nets", "query":"ICATPN"},
+    {"dblp":"FSTTCS", "query":"FST&TCS"},
+    {"dblp":"ELS", "query":"ELW"},
+    {"dblp":"J. Symb. Log.", "query":"Journal of Symbolic Logic"},
+    {"dblp":"ICARSC", "query":"CIRAS"}
 ]
