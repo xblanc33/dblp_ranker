@@ -59,7 +59,7 @@ async function createEntryList(idhal) {
 
 function fetchHALAPI(idhal) {
     logger.info('fetch id : '+idhal)
-    const API_URL = `https://api.archives-ouvertes.fr/search/?q=authIdHal_s:${idhal}&wt=json`;
+    const API_URL = `https://api.archives-ouvertes.fr/search/?q=authIdHal_s:${idhal}&rows=100&wt=json`;
     return fetch(API_URL)
         .then(res => {
             logger.info('res:'+JSON.stringify(res));
