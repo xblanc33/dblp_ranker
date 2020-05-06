@@ -19,16 +19,17 @@ For example
 
 An IdHAL can also be given with the DBLP page
 
-    node src/index.js URL -idhal IDHAL file
+    node src/index.js URL -i IDHAL file
 
 
 An IdHAL can also be given without the DBLP page
 
-    node src/index.js -idhal IDHAL file
+    node src/index.js -i IDHAL file
 
 ## Options
 ```
   -h, --help         Print this usage guide.
+  -i, --idhal        Fetch idhal
   -c, --cache        Use a local cache for the ranking.
   -o, --out file     The output file to generate.
   -p, --patch file   DBLP and Scimago rewriting rules for ranking queries.

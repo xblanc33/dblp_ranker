@@ -21,7 +21,7 @@ const addHAL2DBLP = require('./utilities').addHAL2DBLP;
         { name: 'out', alias: 'o', type: String, typeLabel: '{underline file}', description: 'The output file to generate.' },
         { name: 'patch', alias: 'p', type: String, typeLabel: '{underline file}', defaultValue: "./src/patch.json", description: 'DBLP and Scimago rewriting rules for ranking queries.\n Default value is {italic patch.json}'},
         { name: 'url', type: String, typeLabel: '{underline url}', defaultOption: true, description: 'URL of the target DBLP page.' },
-        { name: 'idhal', type: String, type: String, description: 'idhal' }
+        { name: 'idhal', alias: 'i', type: String, description: 'idhal' }
     ]
     const sections = [
         {

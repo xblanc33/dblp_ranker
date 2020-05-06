@@ -100,12 +100,18 @@ async function fetchDBLP(url) {
 
     for (let index = 0; index < entryList.length; index++) {
         if (entryList[index].kind === 'journal') {
-            await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
-            let inFull = await page.evaluate(() => {
-                return document.querySelector('h1').innerHTML;
-            });
-            entryList[index].inFull = inFull;
-            logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
+            try {
+                //await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
+                await page.goto(entryList[index].link);
+                //await page.waitFor('h1');
+                let inFull = await page.evaluate(() => {
+                    return document.querySelector('h1').innerHTML;
+                });
+                entryList[index].inFull = inFull;
+                logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
+            } catch( ex) {
+                console.log(ex);
+            }
         }
     }
 
