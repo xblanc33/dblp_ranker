@@ -16,6 +16,16 @@ For example
 
     node src/index.js https://dblp.uni-trier.de/pers/b/Blanc_0001:Xavier.html -o xavier
 
+
+An IdHAL can also be given with the DBLP page
+
+    node src/index.js URL -idhal IDHAL file
+
+
+An IdHAL can also be given without the DBLP page
+
+    node src/index.js -idhal IDHAL file
+
 ## Options
 ```
   -h, --help         Print this usage guide.
