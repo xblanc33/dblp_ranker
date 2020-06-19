@@ -117,7 +117,7 @@ async function fetchDBLP(url) {
                 logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
             } catch( ex) {
                 entryList[index].inFull = entryList[index].in;
-                logger.error(`cannot fetch ${entryList[index].link}`)
+                logger.error(`cannot fetch ${entryList[index].link}, error ${ex}`)
             }
         }
     }
@@ -142,20 +142,25 @@ async function setBibTex(entryList) {
     for (let indexEntry = 0; indexEntry < entryList.length; indexEntry++) {
         let entry = entryList[indexEntry];
         logger.info('get bibHref:'+entry.bibHref);
-        await page.goto(entry.bibHref);
-        await page.waitFor(CROSS_REF_OPTIONS_SELECTOR);
-        let bibURL = await page.$eval(CROSS_REF_OPTIONS_SELECTOR, option => {
-            for (let i = 0; i < option.childElementCount; i++) {
-                const value = option.children[i].children[0].innerText;
-                if (value === "standard") {
-                    return option.children[i].children[0].href;
+        try {
+            await page.goto(entry.bibHref);
+            await page.waitFor(CROSS_REF_OPTIONS_SELECTOR);
+            let bibURL = await page.$eval(CROSS_REF_OPTIONS_SELECTOR, option => {
+                for (let i = 0; i < option.childElementCount; i++) {
+                    const value = option.children[i].children[0].innerText;
+                    if (value === "standard") {
+                        return option.children[i].children[0].href;
+                    }
                 }
+                return undefined;
+            });
+            if (bibURL) {
+                entry.standardBibURL = bibURL;
+            } else {
+                entry.standardBibURL = entry.bibHref;
             }
-            return undefined;
-        });
-        if (bibURL) {
-            entry.standardBibURL = bibURL;
-        } else {
+        } catch (e) {
+            logger.error(`cannot get bibtex ${entry.bibHref}, error ${e}`)
             entry.standardBibURL = entry.bibHref;
         }
     }
@@ -165,10 +170,14 @@ async function setBibTex(entryList) {
         let entry = entryList[indexEntry];
         logger.info('get standard bibHref:'+entry.standardBibURL);
         if (entry.standardBibURL) {
-            await page.goto(entry.standardBibURL);
-            await page.waitFor(BIB_SECTION_SELECTOR);
-            let bibtex = await page.$eval(BIB_SECTION_SELECTOR, bib => bib.innerText);
-            entry.bibtex = bibtex;
+            try {
+                await page.goto(entry.standardBibURL);
+                await page.waitFor(BIB_SECTION_SELECTOR);
+                let bibtex = await page.$eval(BIB_SECTION_SELECTOR, bib => bib.innerText);
+                entry.bibtex = bibtex;
+            } catch (e) {
+                logger.error(`cannot get standard bibHref ${entry.standardBibURL}, error: ${e}`)
+            }
         }
     }
     await page.close();
