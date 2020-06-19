@@ -42,7 +42,7 @@ async function createEntryList(idhal) {
                     logger.info('Get '+entry.kind+' : '+entry.title);
                     entryList.push(entry);
                 } else {
-                    logger.info('Entry not valid !')
+                    logger.error(`Entry ${entryURL} not valid !`)
                 }
             }
             await page.close();
@@ -173,29 +173,5 @@ function integrateCitation(entry) {
         logger.info('cannot parse bibtex, entry will be discarded');
         entry.bibtex = undefined;
     }
-    
-
 }
-
-
-/*function integrateBibTex(entry) {
-    try {
-        const bib = parseBibFile(entry.bibtex);
-        let bibEntry = bib.entries_raw[0];
-        entry.year = parseInt(normalizeFieldValue(bibEntry.getField("year")));
-        if (entry.kind === "conference") {
-            entry.in = normalizeFieldValue(bibEntry.getField("booktitle"));
-            entry.inFull = normalizeFieldValue(bibEntry.getField("booktitle"));
-        } else if (entry.kind === "journal") {
-            entry.in = normalizeFieldValue(bibEntry.getField("journal"));
-            entry.inFull = normalizeFieldValue(bibEntry.getField("journal"));
-        }
-    } catch (e) {
-        logger.info('cannot parse bibtex, entry will be discarded');
-        entry.bibtex = undefined;
-    }
-    
-}*/
-
-
 

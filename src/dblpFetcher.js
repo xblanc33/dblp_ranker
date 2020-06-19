@@ -21,7 +21,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 async function createEntryList(url) {
     let entryList = await fetchDBLP(url);
-    await setBitTex(entryList);
+    await setBibTex(entryList);
     return entryList;
 }
 
@@ -44,10 +44,12 @@ async function fetchDBLP(url) {
 
         const CONF_IMG_TITLE = 'Conference and Workshop Papers';
         const JOURNAL_IMG_TITLE = 'Journal Articles';
+        const EDITOR_IMG_TITLE = 'Editorship';
+        const BOOK_IMG_TITLE = 'Books and Theses'
 
         let extractedEntryList = [];
-        let entryList = document.querySelectorAll(ENTRY_SELECTOR);
-        entryList.forEach(entry => {
+        let evaluatedEntryList = document.querySelectorAll(ENTRY_SELECTOR);
+        evaluatedEntryList.forEach(entry => {
             let extractedEntry = {};
 
             let img = entry.querySelector(CONF_JOURN_IMG_SELECTOR);
@@ -55,6 +57,10 @@ async function fetchDBLP(url) {
                 case JOURNAL_IMG_TITLE: extractedEntry.kind = 'journal';
                     break;
                 case CONF_IMG_TITLE: extractedEntry.kind = 'conference';
+                    break;
+                case EDITOR_IMG_TITLE: extractedEntry.kind = 'editor';
+                    break;
+                case BOOK_IMG_TITLE: extractedEntry.kind = 'book';
                     break;
                 default: extractedEntry.kind = undefined;
             }
@@ -110,6 +116,7 @@ async function fetchDBLP(url) {
                 entryList[index].inFull = inFull;
                 logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
             } catch( ex) {
+                entryList[index].inFull = entryList[index].in;
                 console.log(ex);
             }
         }
@@ -123,7 +130,7 @@ async function fetchDBLP(url) {
 }
 
 
-async function setBitTex(entryList) {
+async function setBibTex(entryList) {
     const CROSS_REF_OPTIONS_SELECTOR = '#sorting-selector > div > div.body > ul';
 
     let browser = await puppeteer.launch({ headless: HEADLESS });
