@@ -117,7 +117,7 @@ async function fetchDBLP(url) {
                 logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
             } catch( ex) {
                 entryList[index].inFull = entryList[index].in;
-                console.log(ex);
+                logger.error(`cannot fetch ${entryList[index].link}`)
             }
         }
     }
