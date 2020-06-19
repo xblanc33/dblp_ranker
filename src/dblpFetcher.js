@@ -108,7 +108,7 @@ async function fetchDBLP(url) {
         if (entryList[index].kind === 'journal') {
             try {
                 //await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
-                await page.goto(entryList[index].link);
+                await page.goto(entryList[index].link,{waitUntil: "domcontentloaded"});
                 //await page.waitFor('h1');
                 let inFull = await page.evaluate(() => {
                     return document.querySelector('h1').innerHTML;
@@ -117,7 +117,7 @@ async function fetchDBLP(url) {
                 logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
             } catch( ex) {
                 entryList[index].inFull = entryList[index].in;
-                logger.error(`cannot fetch ${entryList[index].link}, error ${ex}`)
+                logger.error(`cannot fetch JOURNAL FULL NAME ${entryList[index].link}, error ${ex}`)
             }
         }
     }
@@ -143,7 +143,7 @@ async function setBibTex(entryList) {
         let entry = entryList[indexEntry];
         logger.info('get bibHref:'+entry.bibHref);
         try {
-            await page.goto(entry.bibHref);
+            await page.goto(entry.bibHref, {waitUntil: "domcontentloaded"});
             await page.waitFor(CROSS_REF_OPTIONS_SELECTOR);
             let bibURL = await page.$eval(CROSS_REF_OPTIONS_SELECTOR, option => {
                 for (let i = 0; i < option.childElementCount; i++) {
@@ -171,7 +171,7 @@ async function setBibTex(entryList) {
         logger.info('get standard bibHref:'+entry.standardBibURL);
         if (entry.standardBibURL) {
             try {
-                await page.goto(entry.standardBibURL);
+                await page.goto(entry.standardBibURL,{waitUntil: "domcontentloaded"});
                 await page.waitFor(BIB_SECTION_SELECTOR);
                 let bibtex = await page.$eval(BIB_SECTION_SELECTOR, bib => bib.innerText);
                 entry.bibtex = bibtex;
