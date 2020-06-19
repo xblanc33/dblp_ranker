@@ -143,7 +143,7 @@ async function setBibTex(entryList) {
         let entry = entryList[indexEntry];
         logger.info('get bibHref:'+entry.bibHref);
         try {
-            await page.goto(entry.bibHref, {waitUntil: "domcontentloaded"});
+            await page.goto(entry.bibHref);
             await page.waitFor(CROSS_REF_OPTIONS_SELECTOR);
             let bibURL = await page.$eval(CROSS_REF_OPTIONS_SELECTOR, option => {
                 for (let i = 0; i < option.childElementCount; i++) {
@@ -160,7 +160,7 @@ async function setBibTex(entryList) {
                 entry.standardBibURL = entry.bibHref;
             }
         } catch (e) {
-            logger.error(`cannot get bibtex ${entry.bibHref}, error ${e}`)
+            logger.error(`cannot get bibtex ${entry.bibHref} will use the default one (${e})`)
             entry.standardBibURL = entry.bibHref;
         }
     }
