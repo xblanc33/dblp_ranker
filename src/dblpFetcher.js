@@ -19,16 +19,27 @@ if (process.env.NODE_ENV !== 'production') {
     }));
 }
 
-async function createEntryList(url) {
-    let entryList = await fetchDBLP(url);
-    await setBibTex(entryList);
+async function createEntryList(url, options) {
+    let entryList = await fetchDBLP(url, options);
+    await setBibTex(entryList, options);
     return entryList;
 }
 
-async function fetchDBLP(url) {
-    let browser = await puppeteer.launch({ headless: HEADLESS });
+async function fetchDBLP(url, options) {
+    let headless = true;
+    let timeout = 30000;
+    if (options) {
+        if (options.headless) {
+            headless = options.headless;
+        }
+        if (options.timeout) {
+            timeout = options.timeout;
+        }
+    }
+    let browser = await puppeteer.launch({ headless: headless, timeout: timeout });
     let page = await browser.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    //await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.goto(url);
 
     logger.info('OPEN DBLP');
 
@@ -108,7 +119,7 @@ async function fetchDBLP(url) {
         if (entryList[index].kind === 'journal') {
             try {
                 //await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
-                await page.goto(entryList[index].link,{waitUntil: "domcontentloaded"});
+                await page.goto(entryList[index].link);
                 //await page.waitFor('h1');
                 let inFull = await page.evaluate(() => {
                     return document.querySelector('h1').innerHTML;
@@ -130,10 +141,20 @@ async function fetchDBLP(url) {
 }
 
 
-async function setBibTex(entryList) {
+async function setBibTex(entryList, options) {
     const CROSS_REF_OPTIONS_SELECTOR = '#sorting-selector > div > div.body > ul';
 
-    let browser = await puppeteer.launch({ headless: HEADLESS });
+    let headless = true;
+    let timeout = 30000;
+    if (options) {
+        if (options.headless) {
+            headless = options.headless;
+        }
+        if (options.timeout) {
+            timeout = options.timeout;
+        }
+    }
+    let browser = await puppeteer.launch({ headless: headless, timeout: timeout });
     let page = await browser.newPage();
 
     logger.info('FETCH BIBTex');
@@ -143,6 +164,7 @@ async function setBibTex(entryList) {
         let entry = entryList[indexEntry];
         logger.info('get bibHref:'+entry.bibHref);
         try {
+            //await page.goto(entry.bibHref, {waitUntil: "domcontentloaded"});
             await page.goto(entry.bibHref);
             await page.waitFor(CROSS_REF_OPTIONS_SELECTOR);
             let bibURL = await page.$eval(CROSS_REF_OPTIONS_SELECTOR, option => {
@@ -171,7 +193,8 @@ async function setBibTex(entryList) {
         logger.info('get standard bibHref:'+entry.standardBibURL);
         if (entry.standardBibURL) {
             try {
-                await page.goto(entry.standardBibURL,{waitUntil: "domcontentloaded"});
+                //await page.goto(entry.standardBibURL,{waitUntil: "domcontentloaded"});
+                await page.goto(entry.standardBibURL);
                 await page.waitFor(BIB_SECTION_SELECTOR);
                 let bibtex = await page.$eval(BIB_SECTION_SELECTOR, bib => bib.innerText);
                 entry.bibtex = bibtex;
