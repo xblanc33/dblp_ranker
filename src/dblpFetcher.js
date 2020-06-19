@@ -41,7 +41,12 @@ async function fetchDBLP(url, options) {
     //await page.goto(url, { waitUntil: "domcontentloaded" });
     await page.goto(url);
 
-    logger.info('OPEN DBLP');
+    logger.info('OPEN DBLP ');
+    if (options) {
+        logger.info('options: ', options);
+    } else {
+        logger.info('default options');
+    }
 
     let entryList = await page.evaluate(() => {
 
