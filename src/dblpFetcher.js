@@ -36,7 +36,7 @@ async function fetchDBLP(url, options) {
             timeout = options.timeout;
         }
     }
-    let browser = await puppeteer.launch({ headless: headless, timeout: timeout });
+    let browser = await puppeteer.launch({ headless, timeout });
     let page = await browser.newPage();
     //await page.goto(url, { waitUntil: "domcontentloaded" });
     await page.goto(url);

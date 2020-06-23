@@ -42,16 +42,24 @@ async function createEntryList(idhal) {
                     logger.info('Get '+entry.kind+' : '+entry.title);
                     entryList.push(entry);
                 } else {
-                    logger.error(`Entry ${entryURL} not valid !`)
+                    if (entry == undefined ) {
+                        logger.error(`Unable to fetch (entry was undefined): ${entryURL}`)
+                    }
+                    if (entry.kind == undefined) {
+                        logger.error(`No kind in the entry : ${entryURL}`)
+                    }
+                    
                 }
             }
             await page.close();
             await browser.close();
             await setBibTex(entryList);
         } else {
+            logger.error(`HAL return nothing for idHal: ${idhal}`);
             throw new Error("HAL return nothing !!!");
         }
     } catch (e) {
+        logger.error(`Cannot create list for idHal: ${idhal}`);
         logger.error(e);
     }
     return entryList.filter(entry => entry.bibtex && entry.year && entry.title && entry.in && entry.inFull);
@@ -66,6 +74,7 @@ function fetchHALAPI(idhal) {
             if (res.ok) {
                 return res.json();
             } else {
+                logger.error(`Cannot fetch idhal: ${idhal}`);
                 throw new Error('cannot fetch');
             }
         })
@@ -132,7 +141,7 @@ async function fetchEntry(page, url) {
         entry.bibHref = await page.$eval(BIB_BUTTON_SELECTOR, bibButton => bibButton.href);
 
     } catch(e) {
-        logger.error(e);
+        logger.error(`problem while fetching ${url}, `,e);
     }
     
     return entry;
@@ -170,7 +179,7 @@ function integrateCitation(entry) {
             entry.inFull = bibEntry.properties["JOURNAL"];
         }
     } catch (e) {
-        logger.info('cannot parse bibtex, entry will be discarded');
+        logger.error('cannot parse bibtex, entry will be discarded');
         entry.bibtex = undefined;
     }
 }
