@@ -1,5 +1,5 @@
-const createEntryListFromDBLP = require('./dblpFetcher').createEntryList;
-const createEntryListFromHAL = require('./halFetcher').createEntryList;
+const createAuthorExtractionFromDBLP = require('./dblpFetcher').createAuthorExtraction;
+const createAuthorExtractionFromHAL = require('./halFetcher').createAuthorExtraction;
 const setCoreRank = require('./rankFetcher').setCoreRank;
 const setScimagoRank = require('./rankFetcher').setScimagoRank;
 const loadPatch = require('./patchHandler');
@@ -9,7 +9,7 @@ const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 const exportCSV = require('./file').exportCSV;
 const exportJSON = require('./file').exportJSON;
-const addHAL2DBLP = require('./utilities').addHAL2DBLP;
+const fusionAuthorExtraction = require('./utilities').fusionAuthorExtraction;
 
 
 (async function run() {
@@ -47,16 +47,17 @@ const addHAL2DBLP = require('./utilities').addHAL2DBLP;
                 return;
             }
 
-            let entryListDBLP = [];
-            let entryListHAL = [];
+            let authorExtractionDBLP = {};
+            let authorExtractionHAL = {};
             if (options.url) {
-                entryListDBLP = await createEntryListFromDBLP(options.url);
+                authorExtractionDBLP = await createAuthorExtractionFromDBLP(options.url);
             } 
             if (options.idhal) {
-                entryListHAL = await createEntryListFromHAL(options.idhal);
+                authorExtractionHAL = await createAuthorExtractionFromHAL(options.idhal);
             }
 
-            let entryList = addHAL2DBLP(entryListHAL, entryListDBLP);
+            let authorExtraction = fusionAuthorExtraction(authorExtractionHAL, authorExtractionDBLP);
+
 
             let patchMap =  loadPatch(options.patch);
 
@@ -64,7 +65,7 @@ const addHAL2DBLP = require('./utilities').addHAL2DBLP;
             if (options.cache) {
                 coreCache = loadPersistentCache('core.cache');
             }
-            let conferenceList = entryList.filter(entry => entry.kind == 'conference');
+            let conferenceList = authorExtraction.entryList.filter(entry => entry.kind == 'conference');
             await setCoreRank(conferenceList, coreCache, patchMap);
             if (options.cache) {
                 savePersistentCache(coreCache, 'core.cache');
@@ -74,14 +75,14 @@ const addHAL2DBLP = require('./utilities').addHAL2DBLP;
             if (options.cache) {
                 scimagoCache = loadPersistentCache('scimago.cache');
             } 
-            let journalList = entryList.filter(entry => entry.kind == 'journal');
+            let journalList = authorExtraction.entryList.filter(entry => entry.kind == 'journal');
             await setScimagoRank(journalList, scimagoCache, patchMap);
             if (options.cache) {
                 savePersistentCache(scimagoCache, 'scimago.cache');
             }
 
-            exportJSON(entryList, options.out+'.json');
-            exportCSV(entryList, options.out+'.csv');
+            exportJSON(authorExtraction.entryList, options.out+'.json');
+            exportCSV(authorExtraction.entryList, options.out+'.csv');
         } else {
             console.log(usage);
         }

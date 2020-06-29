@@ -9,6 +9,7 @@ function cleanTitle(title) {
     res = res.split('(')[0];
     res = res.split(',')[0];
     res = res.replace(':','');
+    res = res.replace(/[\n\r]+/g, '');
     res = res.replace(/&amp;/g, '');
     res = res.replace(/[{}]+/g, '');
     res = res.replace(/\s+/g, ' ');
@@ -16,13 +17,38 @@ function cleanTitle(title) {
     return res;
 }
 
-module.exports.addHAL2DBLP = function (halEntryList, dblpEntryList ) {
-    let res = [...dblpEntryList];
-    halEntryList.forEach(halEntry => {
-        if (!dblpEntryList.find(entry => levenshtein(cleanTitle(entry.title),cleanTitle(halEntry.title)) <= 2)) {
-            res.push(halEntry);
-        }
-    });
-    return res;
+module.exports.fusionAuthorExtraction = function (halAuthorExtraction, dblpAuthorExtraction ) {
+    let authorExtraction = {
+        entryList : [],
+        errorList : []
+    };
+
+    if (dblpAuthorExtraction.entryList) {
+        dblpAuthorExtraction.entryList.forEach(entry => {
+            authorExtraction.entryList.push(entry);
+        });
+    }
+
+    if (dblpAuthorExtraction.errorList) {
+        dblpAuthorExtraction.errorList.forEach(error => {
+            authorExtraction.errorList.push(error);
+        });
+    }
+    
+    if (halAuthorExtraction.entryList) {
+        halAuthorExtraction.entryList.forEach(halEntry => {
+            if (!dblpAuthorExtraction.entryList.find(entry => levenshtein(cleanTitle(entry.title),cleanTitle(halEntry.title)) <= 2)) {
+                authorExtraction.entryList.push(halEntry);
+            }
+        });
+    }
+    
+    if (halAuthorExtraction.errorList) {
+        halAuthorExtraction.errorList.forEach(error => {
+            authorExtraction.errorList.push(error);
+        });
+    }
+    
+    return authorExtraction;
 }
 

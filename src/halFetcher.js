@@ -9,7 +9,7 @@ const Cite = require('citation-js');
 
 const HEADLESS = true;
 
-module.exports.createEntryList = createEntryList;
+module.exports.createAuthorExtraction = createAuthorExtraction;
 
 const logger = winston.createLogger({
     level: 'info',
@@ -25,44 +25,66 @@ if (process.env.NODE_ENV !== 'production') {
     }));
 }
 
-async function createEntryList(idhal) {
-    let entryList = [];
+async function createAuthorExtraction(idhal) {
+    let authorExtraction = {
+        entryList : [],
+        errorList : []
+    };
+    let fetchedList;
     try {
-        let fetchedList = await fetchHALAPI(idhal);
-        if (fetchedList && fetchedList.response && fetchedList.response.docs && Array.isArray(fetchedList.response.docs)) {
-            logger.info('Found '+fetchedList.response.docs.length);
-            let fetchedDocList = fetchedList.response.docs;
-            let browser = await puppeteer.launch({ headless: HEADLESS });
-            let page = await browser.newPage();
-            for (let indexEntry = 0; indexEntry < fetchedDocList.length; indexEntry++) {
-                const entryURL = fetchedDocList[indexEntry].uri_s;
-                logger.info('Grab '+entryURL);
+        fetchedList = await fetchHALAPI(idhal);
+    } catch (e) {
+        authorExtraction.errorList.push('cannot fetch idHal: ', idhal);
+        return authorExtraction;
+    }
+
+    if (fetchedList && fetchedList.response && fetchedList.response.docs && Array.isArray(fetchedList.response.docs)) {
+        logger.info('Found '+fetchedList.response.docs.length);
+        let fetchedDocList = fetchedList.response.docs;
+        let browser;
+        let page;
+        try {
+            browser = await puppeteer.launch({ headless: HEADLESS });
+            page = await browser.newPage();
+        } catch (e) {
+            logger.error('cannot launch browser ', e);
+            return authorExtraction;
+        }
+        
+        for (let indexEntry = 0; indexEntry < fetchedDocList.length; indexEntry++) {
+            const entryURL = fetchedDocList[indexEntry].uri_s;
+            logger.info('Grab '+entryURL);
+            try {
+                
                 let entry = await fetchEntry(page, entryURL);
                 if (entry != undefined && entry.kind != undefined) {
                     logger.info('Get '+entry.kind+' : '+entry.title);
-                    entryList.push(entry);
+                    authorExtraction.entryList.push(entry);
                 } else {
                     if (entry == undefined ) {
-                        logger.error(`Unable to fetch (entry was undefined): ${entryURL}`)
+                        logger.error(`Unable to fetch (entry was undefined): ${entryURL}`);
+                        authorExtraction.errorList.push(`Unable to fetch (entry was undefined): ${entryURL}`)
                     }
                     if (entry.kind == undefined) {
-                        logger.error(`No kind in the entry : ${entryURL}`)
+                        logger.error(`No kind in the entry : ${entryURL}`);
+                        authorExtraction.errorList.push(`No kind in the entry : ${entryURL}`);
                     }
-                    
                 }
+            } catch(e) {
+                logger.error(`Unable to fetch (entry was undefined): ${entryURL}`)
+                authorExtraction.errorList.push(`Unable to fetch (entry was undefined): ${entryURL}`);
             }
-            await page.close();
-            await browser.close();
-            await setBibTex(entryList);
-        } else {
-            logger.error(`HAL return nothing for idHal: ${idhal}`);
-            throw new Error("HAL return nothing !!!");
         }
-    } catch (e) {
-        logger.error(`Cannot create list for idHal: ${idhal}`);
-        logger.error(e);
+        await page.close();
+        await browser.close();
+        await setBibTex(authorExtraction);
+    } else {
+        logger.error(`HAL return nothing for idHal: ${idhal}`);
+        throw new Error("HAL return nothing !!!");
     }
-    return entryList.filter(entry => entry.bibtex && entry.year && entry.title && entry.in && entry.inFull);
+    const cleanEntryList = authorExtraction.entryList.filter(entry => entry.bibtex && entry.year && entry.title && entry.in && entry.inFull);
+    authorExtraction.entryList = cleanEntryList;
+    return authorExtraction;
 }
 
 function fetchHALAPI(idhal) {
@@ -88,80 +110,79 @@ async function fetchEntry(page, url) {
 
     let entry;
 
-    try {
-        await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.goto(url, { waitUntil: "domcontentloaded" });
 
-        await page.click(DETAIL_SELECTOR);
-        await page.waitFor(ROW_LIST_SELECTOR);
-
-        
-        entry = await page.$$eval(ROW_LIST_SELECTOR, trList => {
-            let halEntry = {};
-            trList.forEach(tr => {
-                if (tr.children && tr.children.length > 1) {
-                    if (clean(tr.children[0].innerText) == 'type de document' || clean(tr.children[0].innerText) == 'document types') {
-                        halEntry.kind = entryKind(tr.children[1].innerText);
-                    }
+    await page.click(DETAIL_SELECTOR);
+    await page.waitFor(ROW_LIST_SELECTOR);
+    
+    entry = await page.$$eval(ROW_LIST_SELECTOR, trList => {
+        let halEntry = {};
+        trList.forEach(tr => {
+            if (tr.children && tr.children.length > 1) {
+                if (clean(tr.children[0].innerText) == 'type de document' || clean(tr.children[0].innerText) == 'document types') {
+                    halEntry.kind = entryKind(tr.children[1].innerText);
                 }
-            });
-            return halEntry;
-
-            function clean(str) {
-                let res = str;
-                res = res.trim();
-                res = res.toLowerCase();
-                res = res.replace(/\s+/g, ' ').trim();
-                res = res.replace(/[{}]+/g, '');
-                res = res.trim();
-                return res;
             }
+        });
+        return halEntry;
 
-            function entryKind(text) {
-                text = text.toLowerCase();
-                const CONF = 'conference';
-                const JOUR = 'journal';
-                if (text.includes('communication dans un congrès')){
-                    return CONF
-                }
-                if (text.includes('conference papers')){
-                    return CONF
-                }
-                if (text.includes('article dans une revue')){
-                    return JOUR;
-                }
-                if (text.includes('journal articles')){
-                    return JOUR;
-                }
-                return undefined;
+        function clean(str) {
+            let res = str;
+            res = res.trim();
+            res = res.toLowerCase();
+            res = res.replace(/\s+/g, ' ').trim();
+            res = res.replace(/[{}]+/g, '');
+            res = res.trim();
+            return res;
+        }
+
+        function entryKind(text) {
+            text = text.toLowerCase();
+            const CONF = 'conference';
+            const JOUR = 'journal';
+            if (text.includes('communication dans un congrès')){
+                return CONF
             }
-        })
+            if (text.includes('conference papers')){
+                return CONF
+            }
+            if (text.includes('article dans une revue')){
+                return JOUR;
+            }
+            if (text.includes('journal articles')){
+                return JOUR;
+            }
+            return undefined;
+        }
+    })
 
-        entry.title = await page.$eval(TITLE_SELECTOR, h1 => h1.innerText);
+    entry.title = await page.$eval(TITLE_SELECTOR, h1 => h1.innerText);
+    entry.title = entry.title.replace(/[\n\r]+/g, ' ').replace(/\s{2,}/g,' ').replace(/^\s+|\s+$/,'') 
 
-        entry.bibHref = await page.$eval(BIB_BUTTON_SELECTOR, bibButton => bibButton.href);
-
-    } catch(e) {
-        logger.error(`problem while fetching ${url}, `,e);
-    }
+    entry.bibHref = await page.$eval(BIB_BUTTON_SELECTOR, bibButton => bibButton.href);
     
     return entry;
 }
 
-async function setBibTex(entryList) {
-    for (let indexEntry = 0; indexEntry < entryList.length; indexEntry++) {
-        const entry = entryList[indexEntry];
+async function setBibTex(authorExtraction) {
+    for (let indexEntry = 0; indexEntry < authorExtraction.entryList.length; indexEntry++) {
+        const entry = authorExtraction.entryList[indexEntry];
         if (entry.bibHref) {
             await fetch(entry.bibHref)
                     .then(res => {
                         if (res.ok) {
                             return res.text();
                         }
+                        throw new Error('cannot fetch entry: ', entry.bibHref);
                     })
                     .then(bibtex => {
                         logger.info('bibtex fetched from '+entry.bibHref);
                         entry.bibtex = bibtex;
                         integrateCitation(entry);
-                    });
+                    })
+                    .catch((e) => {
+                        authorExtraction.errorList.push('cannot fetch entry: ', entry.bibHref);
+                    })
         }
     }
 }

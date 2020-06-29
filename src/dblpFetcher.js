@@ -3,7 +3,7 @@ const winston = require('winston');
 const puppeteer = require('puppeteer');
 const HEADLESS = true;
 
-module.exports.createEntryList = createEntryList;
+module.exports.createAuthorExtraction = createAuthorExtraction;
 
 const logger = winston.createLogger({
     level: 'info',
@@ -19,13 +19,20 @@ if (process.env.NODE_ENV !== 'production') {
     }));
 }
 
-async function createEntryList(url, options) {
-    let entryList = await fetchDBLP(url, options);
-    await setBibTex(entryList, options);
-    return entryList;
+async function createAuthorExtraction(authorURL, options) {
+    let authorExtraction = await createAuthorEntryList(authorURL, options);
+    if (authorExtraction.entryList.length > 0) {
+        await setBibTex(authorExtraction, options);
+    }
+    return authorExtraction;
 }
 
-async function fetchDBLP(url, options) {
+async function createAuthorEntryList(authorURL, options) {
+    let authorExtraction = {
+        entryList : [],
+        errorList : []
+    };
+
     let headless = true;
     let timeout = 30000;
     if (options) {
@@ -36,11 +43,6 @@ async function fetchDBLP(url, options) {
             timeout = options.timeout;
         }
     }
-    let browser = await puppeteer.launch({ headless, timeout });
-    let page = await browser.newPage();
-    //await page.goto(url, { waitUntil: "domcontentloaded" });
-    await page.goto(url);
-
     logger.info('OPEN DBLP ');
     if (options) {
         logger.info('options: ', options);
@@ -48,7 +50,57 @@ async function fetchDBLP(url, options) {
         logger.info('default options');
     }
 
-    let entryList = await page.evaluate(() => {
+    let browser;
+    let page;
+    try {
+        browser = await puppeteer.launch({ headless, timeout });
+        page = await browser.newPage();
+        //await page.goto(url, { waitUntil: "domcontentloaded" });
+        await page.goto(authorURL);
+    } catch (e) {
+        authorExtraction.errorList.push({
+            level: 'fatal',
+            msg:'cannot open url' + authorURL
+        })
+        logger.error(`cannot open url`, authorURL);
+        return authorExtraction;
+    }
+
+    try {
+        authorExtraction.entryList = await fetchAllEntries(page);
+    } catch (e) {
+        authorExtraction.errorList.push({
+            level: 'fatal',
+            msg:'cannot fetch entry list' + authorURL
+        })
+        logger.error(`cannot open url`, authorURL);
+        await page.close();
+        await browser.close();
+        return authorExtraction;
+    }
+    
+    for (let index = 0; index < authorExtraction.entryList.length; index++) {
+        if (authorExtraction.entryList[index].kind === 'journal') {
+            try {
+                let inFull = await fetchFullJournalName(page, authorExtraction.entryList[index].link);
+                authorExtraction.entryList[index].inFull = inFull;
+                logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
+            } catch( ex) {
+                authorExtraction.entryList[index].inFull = entryList[index].in;
+                logger.info(`cannot fetch JOURNAL FULL NAME ${entryList[index].link}, take simple name`)
+            }
+        }
+    }
+
+    await page.close();
+
+    await browser.close();
+
+    return authorExtraction;
+}
+
+async function fetchAllEntries(page) {
+    return page.evaluate(() => {
 
         const ENTRY_SELECTOR = '#publ-section li.entry';
         const CONF_JOURN_IMG_SELECTOR = 'div.box img';
@@ -118,35 +170,19 @@ async function fetchDBLP(url, options) {
         }
     });
 
-    logger.info('GET DBLP ENTRIES');
+}
 
-    for (let index = 0; index < entryList.length; index++) {
-        if (entryList[index].kind === 'journal') {
-            try {
-                //await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
-                await page.goto(entryList[index].link);
-                //await page.waitFor('h1');
-                let inFull = await page.evaluate(() => {
-                    return document.querySelector('h1').innerHTML;
-                });
-                entryList[index].inFull = inFull;
-                logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
-            } catch( ex) {
-                entryList[index].inFull = entryList[index].in;
-                logger.error(`cannot fetch JOURNAL FULL NAME ${entryList[index].link}, error ${ex}`)
-            }
-        }
-    }
-
-    await page.close();
-
-    await browser.close();
-
-    return entryList;
+async function fetchFullJournalName(page, link) {
+    //await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
+    await page.goto(link);
+    //await page.waitFor('h1');
+    return page.evaluate(() => {
+        return document.querySelector('h1').innerHTML;
+    });
 }
 
 
-async function setBibTex(entryList, options) {
+async function setBibTex(authorExtraction, options) {
     const CROSS_REF_OPTIONS_SELECTOR = '#sorting-selector > div > div.body > ul';
 
     let headless = true;
@@ -159,14 +195,26 @@ async function setBibTex(entryList, options) {
             timeout = options.timeout;
         }
     }
-    let browser = await puppeteer.launch({ headless: headless, timeout: timeout });
-    let page = await browser.newPage();
+    let browser;
+    let page;
+    try {
+        browser = await puppeteer.launch({ headless: headless, timeout: timeout });
+        page = await browser.newPage();
+    } catch(e) {
+        authorExtraction.errorList.push({
+            level: 'fatal',
+            msg:'cannot open browser for setting the Bibtex'
+        })
+        logger.error('cannot open browser for setting the Bibtex')
+        return authorExtraction;
+    }
+     
 
     logger.info('FETCH BIBTex');
     
 
-    for (let indexEntry = 0; indexEntry < entryList.length; indexEntry++) {
-        let entry = entryList[indexEntry];
+    for (let indexEntry = 0; indexEntry < authorExtraction.entryList.length; indexEntry++) {
+        let entry = authorExtraction.entryList[indexEntry];
         logger.info('get bibHref:'+entry.bibHref);
         try {
             //await page.goto(entry.bibHref, {waitUntil: "domcontentloaded"});
@@ -187,14 +235,14 @@ async function setBibTex(entryList, options) {
                 entry.standardBibURL = entry.bibHref;
             }
         } catch (e) {
-            logger.error(`cannot get bibtex ${entry.bibHref} will use the default one (${e})`)
+            logger.info(`cannot get bibtex ${entry.bibHref} will use the default one (${e})`);
             entry.standardBibURL = entry.bibHref;
         }
     }
 
     const BIB_SECTION_SELECTOR = '#bibtex-section > pre';
-    for (let indexEntry = 0; indexEntry < entryList.length; indexEntry++) {
-        let entry = entryList[indexEntry];
+    for (let indexEntry = 0; indexEntry < authorExtraction.entryList.length; indexEntry++) {
+        let entry = authorExtraction.entryList[indexEntry];
         logger.info('get standard bibHref:'+entry.standardBibURL);
         if (entry.standardBibURL) {
             try {
@@ -204,7 +252,8 @@ async function setBibTex(entryList, options) {
                 let bibtex = await page.$eval(BIB_SECTION_SELECTOR, bib => bib.innerText);
                 entry.bibtex = bibtex;
             } catch (e) {
-                logger.error(`cannot get standard bibHref ${entry.standardBibURL}, error: ${e}`)
+                logger.error(`cannot get standard bibHref ${entry.standardBibURL}, error: ${e}`);
+                authorExtraction.errorList.push(`cannot get standard bibHref ${entry.standardBibURL}, error: ${e}`);
             }
         }
     }
