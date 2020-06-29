@@ -117,7 +117,19 @@ async function createAuthorExtraction(idhal, options) {
         logger.error(`HAL return nothing for idHal: ${idhal}`);
         throw new Error("HAL return nothing !!!");
     }
-    const cleanEntryList = authorExtraction.entryList.filter(entry => entry.bibtex && entry.year && entry.title && entry.in && entry.inFull);
+    const cleanEntryList = [];
+    authorExtraction.entryList.forEach(entry => {
+        if (entry.bibtex && entry.year && entry.title && entry.in && entry.inFull) {
+            cleanEntryList.push(entry);
+        } else {
+            authorExtraction.logList.push({
+                level: 'error',
+                msg:`Bibtex is discarded, too few data: ${entry.bibHref}`
+            });
+            logger.error(`Bibtex is discarded, too few data: ${entry.bibHref}`);
+        }
+    });
+    authorExtraction.find()
     authorExtraction.entryList = cleanEntryList;
     return authorExtraction;
 }
@@ -218,7 +230,7 @@ async function setBibTex(authorExtraction) {
                     .catch((e) => {
                         authorExtraction.logList.push({
                             level: 'warning',
-                            msg:`'cannot fetch entry: ${entry.bibHref}`
+                            msg:`cannot fetch entry: ${entry.bibHref}`
                         });
                     })
         }
@@ -238,7 +250,6 @@ function integrateCitation(entry) {
             entry.inFull = bibEntry.properties["JOURNAL"];
         }
     } catch (e) {
-        logger.error('cannot parse bibtex, entry will be discarded');
         entry.bibtex = undefined;
     }
 }
