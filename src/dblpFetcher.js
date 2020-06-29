@@ -40,8 +40,8 @@ async function createAuthorEntryList(authorURL, options) {
     let headless = true;
     let timeout = 30000;
     if (options) {
-        if (options.headless) {
-            headless = options.headless;
+        if (options.headless === false) {
+            headless = false;
         }
         if (options.timeout) {
             timeout = options.timeout;

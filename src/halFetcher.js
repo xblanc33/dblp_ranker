@@ -7,8 +7,6 @@ const Cite = require('citation-js');
 //const parseBibFile = require('bibtex').parseBibFile;
 //const normalizeFieldValue = require('bibtex').normalizeFieldValue;
 
-const HEADLESS = true;
-
 module.exports.createAuthorExtraction = createAuthorExtraction;
 
 const dateNow = new Date();
@@ -29,11 +27,31 @@ if (process.env.NODE_ENV !== 'production') {
     }));
 }
 
-async function createAuthorExtraction(idhal) {
+async function createAuthorExtraction(idhal, options) {
     let authorExtraction = {
         entryList : [],
         logList : []
     };
+
+    let headless = true;
+    let timeout = 30000;
+    if (options) {
+        if (options.headless === false) {
+            headless = false;
+        }
+        if (options.timeout) {
+            timeout = options.timeout;
+        }
+    }
+    logger.info('OPEN DBLP ');
+    if (options) {
+        logger.info('options: ', options);
+    } else {
+        logger.info('default options');
+    }
+
+
+    
     let fetchedList;
     try {
         fetchedList = await fetchHALAPI(idhal);
@@ -52,7 +70,7 @@ async function createAuthorExtraction(idhal) {
         let browser;
         let page;
         try {
-            browser = await puppeteer.launch({ headless: HEADLESS });
+            browser = await puppeteer.launch({ headless, timeout });
             page = await browser.newPage();
         } catch (e) {
             logger.error('cannot launch browser ', e);
