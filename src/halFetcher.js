@@ -129,7 +129,6 @@ async function createAuthorExtraction(idhal, options) {
             logger.error(`Bibtex is discarded, too few data: ${entry.bibHref}`);
         }
     });
-    authorExtraction.find()
     authorExtraction.entryList = cleanEntryList;
     return authorExtraction;
 }
