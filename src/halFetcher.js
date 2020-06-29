@@ -11,11 +11,15 @@ const HEADLESS = true;
 
 module.exports.createAuthorExtraction = createAuthorExtraction;
 
+const dateNow = new Date();
+const dateString = dateNow.getFullYear() + '_' + dateNow.getMonth() + '_' + dateNow.getDate() + '_' + dateNow.getHours() + '_' + dateNow.getMinutes();
+
+
 const logger = winston.createLogger({
     level: 'info',
     format: winston.format.json(),
     transports: [
-        new winston.transports.File({ filename: 'error.log', level: 'error' }),
+        new winston.transports.File({ filename: `error_${dateString}.log`, level: 'error' }),
     ]
 });
 
@@ -28,13 +32,17 @@ if (process.env.NODE_ENV !== 'production') {
 async function createAuthorExtraction(idhal) {
     let authorExtraction = {
         entryList : [],
-        errorList : []
+        logList : []
     };
     let fetchedList;
     try {
         fetchedList = await fetchHALAPI(idhal);
     } catch (e) {
-        authorExtraction.errorList.push('cannot fetch idHal: ', idhal);
+        logger.error(`cannot fetch idHal: ${idhal}`);
+        authorExtraction.logList.push({
+            level: 'fatal',
+            msg:`cannot fetch idHal: ${idhal}`
+        });
         return authorExtraction;
     }
 
@@ -62,17 +70,26 @@ async function createAuthorExtraction(idhal) {
                     authorExtraction.entryList.push(entry);
                 } else {
                     if (entry == undefined ) {
-                        logger.error(`Unable to fetch (entry was undefined): ${entryURL}`);
-                        authorExtraction.errorList.push(`Unable to fetch (entry was undefined): ${entryURL}`)
+                        logger.warn(`Unable to fetch (entry was undefined): ${entryURL}`);
+                        authorExtraction.logList.push({
+                            level: 'warning',
+                            msg:`Unable to fetch (entry was undefined): ${entryURL}`
+                        })
                     }
                     if (entry.kind == undefined) {
-                        logger.error(`No kind in the entry : ${entryURL}`);
-                        authorExtraction.errorList.push(`No kind in the entry : ${entryURL}`);
+                        logger.warn(`No kind in the entry : ${entryURL}`);
+                        authorExtraction.logList.push({
+                            level: 'warning',
+                            msg:`No kind in the entry : ${entryURL}`
+                        });
                     }
                 }
             } catch(e) {
                 logger.error(`Unable to fetch (entry was undefined): ${entryURL}`)
-                authorExtraction.errorList.push(`Unable to fetch (entry was undefined): ${entryURL}`);
+                authorExtraction.logList.push({
+                    level: 'warning',
+                    msg:`Unable to fetch (entry was undefined): ${entryURL}`
+                });
             }
         }
         await page.close();
@@ -181,7 +198,10 @@ async function setBibTex(authorExtraction) {
                         integrateCitation(entry);
                     })
                     .catch((e) => {
-                        authorExtraction.errorList.push('cannot fetch entry: ', entry.bibHref);
+                        authorExtraction.logList.push({
+                            level: 'warning',
+                            msg:`'cannot fetch entry: ${entry.bibHref}`
+                        });
                     })
         }
     }

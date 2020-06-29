@@ -83,6 +83,8 @@ const fusionAuthorExtraction = require('./utilities').fusionAuthorExtraction;
 
             exportJSON(authorExtraction.entryList, options.out+'.json');
             exportCSV(authorExtraction.entryList, options.out+'.csv');
+
+            exportJSON(authorExtraction.logList, options.out+'_log.json');
         } else {
             console.log(usage);
         }

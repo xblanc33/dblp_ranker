@@ -5,11 +5,15 @@ const HEADLESS = true;
 
 module.exports.createAuthorExtraction = createAuthorExtraction;
 
+const dateNow = new Date();
+const dateString = dateNow.getFullYear() + '_' + dateNow.getMonth() + '_' + dateNow.getDate() + '_' + dateNow.getHours() + '_' + dateNow.getMinutes();
+
+
 const logger = winston.createLogger({
     level: 'info',
     format: winston.format.json(),
     transports: [
-        new winston.transports.File({ filename: 'error.log', level: 'error' }),
+        new winston.transports.File({ filename: `error_${dateString}.log`, level: 'error' }),
     ]
 });
 
@@ -30,7 +34,7 @@ async function createAuthorExtraction(authorURL, options) {
 async function createAuthorEntryList(authorURL, options) {
     let authorExtraction = {
         entryList : [],
-        errorList : []
+        logList : []
     };
 
     let headless = true;
@@ -58,7 +62,7 @@ async function createAuthorEntryList(authorURL, options) {
         //await page.goto(url, { waitUntil: "domcontentloaded" });
         await page.goto(authorURL);
     } catch (e) {
-        authorExtraction.errorList.push({
+        authorExtraction.logList.push({
             level: 'fatal',
             msg:'cannot open url' + authorURL
         })
@@ -69,7 +73,7 @@ async function createAuthorEntryList(authorURL, options) {
     try {
         authorExtraction.entryList = await fetchAllEntries(page);
     } catch (e) {
-        authorExtraction.errorList.push({
+        authorExtraction.logList.push({
             level: 'fatal',
             msg:'cannot fetch entry list' + authorURL
         })
@@ -201,7 +205,7 @@ async function setBibTex(authorExtraction, options) {
         browser = await puppeteer.launch({ headless: headless, timeout: timeout });
         page = await browser.newPage();
     } catch(e) {
-        authorExtraction.errorList.push({
+        authorExtraction.logList.push({
             level: 'fatal',
             msg:'cannot open browser for setting the Bibtex'
         })
@@ -252,8 +256,11 @@ async function setBibTex(authorExtraction, options) {
                 let bibtex = await page.$eval(BIB_SECTION_SELECTOR, bib => bib.innerText);
                 entry.bibtex = bibtex;
             } catch (e) {
-                logger.error(`cannot get standard bibHref ${entry.standardBibURL}, error: ${e}`);
-                authorExtraction.errorList.push(`cannot get standard bibHref ${entry.standardBibURL}, error: ${e}`);
+                logger.warn(`cannot get standard bibHref ${entry.standardBibURL}, error: ${e}`);
+                authorExtraction.logList.push({
+                    level: 'error',
+                    msg:`cannot get standard bibHref ${entry.standardBibURL}, error: ${e}`
+                });
             }
         }
     }

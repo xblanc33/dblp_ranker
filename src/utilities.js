@@ -20,7 +20,7 @@ function cleanTitle(title) {
 module.exports.fusionAuthorExtraction = function (halAuthorExtraction, dblpAuthorExtraction ) {
     let authorExtraction = {
         entryList : [],
-        errorList : []
+        logList : []
     };
 
     if (dblpAuthorExtraction.entryList) {
@@ -29,9 +29,9 @@ module.exports.fusionAuthorExtraction = function (halAuthorExtraction, dblpAutho
         });
     }
 
-    if (dblpAuthorExtraction.errorList) {
-        dblpAuthorExtraction.errorList.forEach(error => {
-            authorExtraction.errorList.push(error);
+    if (dblpAuthorExtraction.logList) {
+        dblpAuthorExtraction.logList.forEach(error => {
+            authorExtraction.logList.push(error);
         });
     }
     
@@ -43,9 +43,9 @@ module.exports.fusionAuthorExtraction = function (halAuthorExtraction, dblpAutho
         });
     }
     
-    if (halAuthorExtraction.errorList) {
-        halAuthorExtraction.errorList.forEach(error => {
-            authorExtraction.errorList.push(error);
+    if (halAuthorExtraction.logList) {
+        halAuthorExtraction.logList.forEach(error => {
+            authorExtraction.logList.push(error);
         });
     }
     
