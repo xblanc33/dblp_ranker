@@ -25,9 +25,8 @@ module.exports.exportCSV = function (entryList, filename) {
         const parser = new Parser(opts);
         const csv = parser.parse(entryList);
 
-        logger.info(csv);
-
         fs.writeFileSync(filename, csv);
+        logger.info(`${filename} is exported`);
     } catch (err) {
         logger.error(err);
     }
@@ -37,6 +36,7 @@ module.exports.exportJSON = function(entryList, filename) {
     try {
         let data = JSON.stringify(entryList);
         fs.writeFileSync(filename, data);
+        logger.info(`${filename} is exported`);
     } catch (err) {
         logger.error(err);
     }
