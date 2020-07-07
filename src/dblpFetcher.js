@@ -117,7 +117,8 @@ async function fetchAllEntries(page) {
         const CONF_IMG_TITLE = 'Conference and Workshop Papers';
         const JOURNAL_IMG_TITLE = 'Journal Articles';
         const EDITOR_IMG_TITLE = 'Editorship';
-        const BOOK_IMG_TITLE = 'Books and Theses'
+        const BOOK_IMG_TITLE = 'Books and Theses';
+        const IN_BOOK_TITLE = 'Parts in Books or Collections';
 
         let extractedEntryList = [];
         let evaluatedEntryList = document.querySelectorAll(ENTRY_SELECTOR);
@@ -134,6 +135,7 @@ async function fetchAllEntries(page) {
                     break;
                 case BOOK_IMG_TITLE: extractedEntry.kind = 'book';
                     break;
+                case IN_BOOK_TITLE: extractedEntry.kind = 'inbook';
                 default: extractedEntry.kind = undefined;
             }
 
