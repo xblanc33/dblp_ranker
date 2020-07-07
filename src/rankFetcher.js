@@ -89,10 +89,14 @@ async function setCoreRank(entryList, cache, patchMap) {
                         }
                         return 'no matching result:' + unmatch;
                     } else {
-                        return 'unknown';
+                        return 'no matching result:';
                     }
                 }, query);
-                entry.rank = rank;
+                if (rank.startsWith('no matching')) {
+                    entry.rank = 'unknown';
+                } else {
+                    entry.rank = rank;
+                }
                 cache.set(query + entry.year, { rank: entry.rank, year: entry.rankYear });
 
                 logger.info(`Found rank: ${rank}`);
