@@ -91,7 +91,7 @@ async function createAuthorEntryList(authorURL, options) {
                 logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
             } catch( ex) {
                 authorExtraction.entryList[index].inFull = authorExtraction.entryList[index].in;
-                logger.info(`cannot fetch JOURNAL FULL NAME ${entryList[index].link}, take simple name`)
+                logger.info(`cannot fetch JOURNAL FULL NAME ${authorExtraction.entryList[index].link}, take simple name`)
             }
         }
     }
@@ -183,7 +183,7 @@ async function fetchAllEntries(page) {
 
 async function fetchFullJournalName(page, link) {
     //await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
-    await page.goto(link,{waitUntil:'domcontentloaded'});
+    await page.goto(link,{waitUntil:'load'});
     //await page.waitFor('h1');
     return page.evaluate(() => {
         return document.querySelector('h1').innerHTML;
