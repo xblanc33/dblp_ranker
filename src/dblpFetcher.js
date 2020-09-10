@@ -60,7 +60,7 @@ async function createAuthorEntryList(authorURL, options) {
         browser = await puppeteer.launch({ headless, timeout });
         page = await browser.newPage();
         //await page.goto(url, { waitUntil: "domcontentloaded" });
-        await page.goto(authorURL);
+        await page.goto(authorURL, {waitUntil:'domcontentloaded'});
     } catch (e) {
         authorExtraction.logList.push({
             level: 'fatal',
@@ -104,9 +104,9 @@ async function createAuthorEntryList(authorURL, options) {
 }
 
 async function fetchAllEntries(page) {
-    const ENTRY_SELECTOR = '#publ-section li.entry';
-    await page.waitForSelector(ENTRY_SELECTOR, {visible:true});
     return page.evaluate(() => {
+
+        const ENTRY_SELECTOR = '#publ-section li.entry';
         const CONF_JOURN_IMG_SELECTOR = 'div.box img';
         const NUMBER_SELECTOR = 'div.nr';
         const ENTRY_LINK_SELECTOR = 'cite > a';
