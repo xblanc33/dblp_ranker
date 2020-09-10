@@ -121,8 +121,8 @@ async function fetchAllEntries(page) {
         const IN_BOOK_TITLE = 'Parts in Books or Collections';
 
         let extractedEntryList = [];
-        let evaluatedEntryList = document.querySelectorAll(ENTRY_SELECTOR);
-        evaluatedEntryList.forEach(entry => {
+        let entryList = document.querySelectorAll(ENTRY_SELECTOR);
+        entryList.forEach(entry => {
             let extractedEntry = {};
 
             let img = entry.querySelector(CONF_JOURN_IMG_SELECTOR);

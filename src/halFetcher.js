@@ -43,7 +43,7 @@ async function createAuthorExtraction(idhal, options) {
             timeout = options.timeout;
         }
     }
-    logger.info('OPEN DBLP ');
+    logger.info('OPEN HAL ');
     if (options) {
         logger.info('options: ', options);
     } else {
