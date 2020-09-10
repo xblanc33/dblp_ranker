@@ -90,7 +90,7 @@ async function createAuthorEntryList(authorURL, options) {
                 authorExtraction.entryList[index].inFull = inFull;
                 logger.info(`GET FULL JOURNAL NAME: ${inFull}`);
             } catch( ex) {
-                authorExtraction.entryList[index].inFull = entryList[index].in;
+                authorExtraction.entryList[index].inFull = authorExtraction.entryList[index].in;
                 logger.info(`cannot fetch JOURNAL FULL NAME ${entryList[index].link}, take simple name`)
             }
         }
@@ -183,7 +183,7 @@ async function fetchAllEntries(page) {
 
 async function fetchFullJournalName(page, link) {
     //await page.goto(entryList[index].link, { waitUntil: "domcontentloaded" });
-    await page.goto(link);
+    await page.goto(link,{waitUntil:'domcontentloaded'});
     //await page.waitFor('h1');
     return page.evaluate(() => {
         return document.querySelector('h1').innerHTML;
@@ -227,7 +227,7 @@ async function setBibTex(authorExtraction, options) {
         logger.info('get bibHref:'+entry.bibHref);
         try {
             //await page.goto(entry.bibHref, {waitUntil: "domcontentloaded"});
-            await page.goto(entry.bibHref);
+            await page.goto(entry.bibHref,{waitUntil:'domcontentloaded'});
             await page.waitFor(CROSS_REF_OPTIONS_SELECTOR);
             let bibURL = await page.$eval(CROSS_REF_OPTIONS_SELECTOR, option => {
                 for (let i = 0; i < option.childElementCount; i++) {
@@ -256,7 +256,7 @@ async function setBibTex(authorExtraction, options) {
         if (entry.standardBibURL) {
             try {
                 //await page.goto(entry.standardBibURL,{waitUntil: "domcontentloaded"});
-                await page.goto(entry.standardBibURL);
+                await page.goto(entry.standardBibURL,{waitUntil:'domcontentloaded'});
                 await page.waitFor(BIB_SECTION_SELECTOR);
                 let bibtex = await page.$eval(BIB_SECTION_SELECTOR, bib => bib.innerText);
                 entry.bibtex = bibtex;
