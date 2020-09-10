@@ -105,7 +105,6 @@ async function createAuthorEntryList(authorURL, options) {
 
 async function fetchAllEntries(page) {
     return page.evaluate(() => {
-
         const ENTRY_SELECTOR = '#publ-section li.entry';
         const CONF_JOURN_IMG_SELECTOR = 'div.box img';
         const NUMBER_SELECTOR = 'div.nr';
@@ -126,6 +125,11 @@ async function fetchAllEntries(page) {
             let extractedEntry = {};
 
             let img = entry.querySelector(CONF_JOURN_IMG_SELECTOR);
+            if (img === null ) {
+                img = {
+                    title: undefined
+                }
+            }
             switch (img.title) {
                 case JOURNAL_IMG_TITLE: extractedEntry.kind = 'journal';
                     break;
@@ -139,27 +143,26 @@ async function fetchAllEntries(page) {
                 default: extractedEntry.kind = undefined;
             }
 
-            if (entry.querySelector(NUMBER_SELECTOR)) {
-                extractedEntry.number = entry.querySelector(NUMBER_SELECTOR).id;
-            }
-
-            if (entry.querySelector(ENTRY_LINK_SELECTOR)) {
-                extractedEntry.link = entry.querySelector(ENTRY_LINK_SELECTOR).href;
-            }
-
-            if (entry.querySelector(ENTRY_IN_NAME_SELECTOR)) {
-                extractedEntry.in = entry.querySelector(ENTRY_IN_NAME_SELECTOR).innerText;
-            }
-
-            if (entry.querySelector(ENTRY_TITLE_SELECTOR)) {
-                extractedEntry.title = entry.querySelector(ENTRY_TITLE_SELECTOR).innerText;
-            }
-
-            extractedEntry.year = getYear(entry);
-
-            extractedEntry.bibHref = entry.querySelectorAll(BIB_ENTRY)[1].children[0].href;
-
             if (extractedEntry.kind) {
+                if (entry.querySelector(NUMBER_SELECTOR)) {
+                    extractedEntry.number = entry.querySelector(NUMBER_SELECTOR).id;
+                }
+    
+                if (entry.querySelector(ENTRY_LINK_SELECTOR)) {
+                    extractedEntry.link = entry.querySelector(ENTRY_LINK_SELECTOR).href;
+                }
+    
+                if (entry.querySelector(ENTRY_IN_NAME_SELECTOR)) {
+                    extractedEntry.in = entry.querySelector(ENTRY_IN_NAME_SELECTOR).innerText;
+                }
+    
+                if (entry.querySelector(ENTRY_TITLE_SELECTOR)) {
+                    extractedEntry.title = entry.querySelector(ENTRY_TITLE_SELECTOR).innerText;
+                }
+    
+                extractedEntry.year = getYear(entry);
+    
+                extractedEntry.bibHref = entry.querySelectorAll(BIB_ENTRY)[1].children[0].href;
                 extractedEntryList.push(extractedEntry);
             }
 
